@@ -1,0 +1,48 @@
+[project]
+name = "routewise"
+version = "0.1.0"
+description = "Eval-gated LLM router: per-query model selection driven by measured eval scores."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+dependencies = [
+    "litellm>=1.50",
+    "pyyaml>=6.0",
+    "jsonschema>=4.21",
+    "python-dotenv>=1.0",
+    "streamlit>=1.38",
+    "pandas>=2.2",
+    "altair>=5.3",
+    "fastapi>=0.115",
+    "uvicorn>=0.30",
+]
+
+[project.scripts]
+routewise = "routewise.cli:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "ruff>=0.6",
+    "httpx>=0.27",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["routewise"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
