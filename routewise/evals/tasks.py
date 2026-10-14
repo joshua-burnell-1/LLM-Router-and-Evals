@@ -73,7 +73,7 @@ A2 = EvalTask(
         "Today is Tuesday 2026-11-03. Reply with only the JSON arguments object for book_slot."
     ),
     prompt=(
-        "Can you grab 45 minutes with dana@acme.io this Thursday at 2:30pm to go over the "
+        "Can you grab 45 minutes with dana@acme.example this Thursday at 2:30pm to go over the "
         "Q4 roadmap?"
     ),
     scoring=[
@@ -85,14 +85,14 @@ A2 = EvalTask(
                     "date": "2026-11-05",
                     "start": "14:30",
                     "duration_minutes": 45,
-                    "attendees": ["dana@acme.io"],
+                    "attendees": ["dana@acme.example"],
                 },
             },
         )
     ],
     reference_output=(
         '{"date": "2026-11-05", "start": "14:30", "duration_minutes": 45, '
-        '"attendees": ["dana@acme.io"], "title": "Q4 roadmap review"}'
+        '"attendees": ["dana@acme.example"], "title": "Q4 roadmap review"}'
     ),
 )
 
@@ -652,8 +652,8 @@ E15 = EvalTask(
 )
 
 PII_PARAGRAPH = (
-    "Hi team, please send invoice 5521 to maria.lopez@northwind.co and cc "
-    "billing-ops@northwind.co. If anything is unclear, call Maria at (415) 555-0134 or her "
+    "Hi team, please send invoice 5521 to maria.lopez@northwind.example and cc "
+    "billing-ops@northwind.example. If anything is unclear, call Maria at (415) 555-0134 or her "
     "backup on +1 212.555.0199. We need it before Thursday."
 )
 

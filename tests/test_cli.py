@@ -124,3 +124,23 @@ def test_export_then_import_round_trips(env, tmp_path, capsys):
     key = lambda r: (r.task_id, r.model_id, r.sample_idx)  # noqa: E731
     assert sorted(map(key, imported)) == sorted(map(key, original))
     assert "imported 24" in capsys.readouterr().out
+
+
+def test_export_skips_rows_for_outdated_task_versions(env, tmp_path):
+    store = ResultStore(env / "results.db")
+    task = BUILTIN_TASKS[0]
+    store.record(
+        ResultRow(
+            task_id=task.id,
+            task_version="stale000000",
+            model_id="big",
+            created_at="x",
+            category=task.category,
+            quality=1.0,
+            output="old",
+        )
+    )
+    out = tmp_path / "seed.jsonl"
+    assert main(["export", "--out", str(out)]) == 0
+    assert "stale000000" not in out.read_text()
+    assert len(out.read_text().splitlines()) == 24

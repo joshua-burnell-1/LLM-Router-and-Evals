@@ -121,9 +121,9 @@ Seeded on 2026-10-14 against Claude Opus 5.5, Sonnet 5.5 and Haiku 5.5: 110 task
 
 | Model | Mean quality (95% CI) | Mean cost / task | Total cost | n |
 |---|---|---|---|---|
-| claude-opus-5-5 | 1.00 (1.00-1.00) | $0.00610 | $1.0248 | 168 |
-| claude-sonnet-5-5 | 1.00 (0.99-1.00) | $0.00361 | $0.6065 | 168 |
-| claude-haiku-5-5 | 0.99 (0.99-1.00) | $0.00035 | $0.0583 | 168 |
+| claude-opus-5-5 | 1.00 (1.00-1.00) | $0.00613 | $1.0290 | 168 |
+| claude-sonnet-5-5 | 1.00 (0.99-1.00) | $0.00367 | $0.6161 | 168 |
+| claude-haiku-5-5 | 0.99 (0.99-1.00) | $0.00035 | $0.0584 | 168 |
 
 | Model | reasoning | safety | structured_output | summarization | voice | overall |
 |---|---|---|---|---|---|---|
@@ -135,11 +135,11 @@ Router replay (leave-one-out) against always using the flagship (Opus):
 
 | Mode | Router quality | Flagship quality | Router cost | Flagship cost | Savings |
 |---|---|---|---|---|---|
-| quality | 0.997 | 0.999 | $0.0687 | $0.5570 | 88% |
-| balanced | 0.995 | 0.999 | $0.0331 | $0.5570 | 94% |
-| cost | 0.995 | 0.999 | $0.0331 | $0.5570 | 94% |
+| quality | 0.997 | 0.999 | $0.0688 | $0.5605 | 88% |
+| balanced | 0.995 | 0.999 | $0.0331 | $0.5605 | 94% |
+| cost | 0.995 | 0.999 | $0.0331 | $0.5605 | 94% |
 
-Classifier accuracy on the 110 tasks (leave-one-out): 98%.
+Classifier accuracy on the 110 tasks (leave-one-out): 97%.
 
 **Interpretation.** On this task set the three Claude 5.5 models are nearly indistinguishable:
 104 of 110 tasks are saturated (every model perfect), including all 42 generated hard tasks

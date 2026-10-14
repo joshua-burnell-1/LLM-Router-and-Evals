@@ -255,9 +255,9 @@ def test_unknown_category_rejected():
 
 
 def test_json_fields_compares_list_values_as_sets():
-    expected = {"attendees": ["dana@acme.io", "li@acme.io"]}
-    out_ok = '{"attendees": ["Li@acme.io", "dana@acme.io"]}'
-    out_bad = '{"attendees": ["dana@acme.io"]}'
+    expected = {"attendees": ["dana@acme.example", "li@acme.example"]}
+    out_ok = '{"attendees": ["Li@acme.example", "dana@acme.example"]}'
+    out_bad = '{"attendees": ["dana@acme.example"]}'
     assert run("exact_match", out_ok, expected=expected, extract="json_fields") == 1.0
     assert run("exact_match", out_bad, expected=expected, extract="json_fields") == 0.0
 

@@ -199,8 +199,8 @@ def cmd_export(args: argparse.Namespace) -> int:
     import json
     from dataclasses import asdict
 
-    store = ResultStore(args.db or default_db_path())
-    rows = store.rows(include_errors=False)
+    ctx = Context(args.db)
+    rows = ctx.store.rows(current=ctx.tasks)  # current task versions only, no error rows
     with open(args.out, "w", encoding="utf-8") as fh:
         for row in rows:
             fh.write(json.dumps(asdict(row), ensure_ascii=False) + "\n")

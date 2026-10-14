@@ -19,40 +19,40 @@ templates:
       - name: Aisha Bello
         title: VP of Partnerships
         company: Lumen Freight
-        email: aisha.bello@lumenfreight.com
-        footer: "Best,\nAisha Bello | VP of Partnerships\nLumen Freight - moving what matters\naisha.bello@lumenfreight.com | Sent from my phone, pls excuse typos"
+        email: aisha.bello@lumenfreight.example
+        footer: "Best,\nAisha Bello | VP of Partnerships\nLumen Freight - moving what matters\naisha.bello@lumenfreight.example | Sent from my phone, pls excuse typos"
       - name: Tomás Ruiz
         title: Staff Engineer, Platform
         company: Quarry Labs
-        email: truiz@quarrylabs.io
-        footer: "--\nTomás Ruiz\nStaff Engineer, Platform\nQuarry Labs\nPronouns: he/him\nwork: truiz@quarrylabs.io (personal: tomas.r.dev@gmail.com, don't use for work stuff)"
+        email: truiz@quarrylabs.example
+        footer: "--\nTomás Ruiz\nStaff Engineer, Platform\nQuarry Labs\nPronouns: he/him\nwork: truiz@quarrylabs.example (personal: tomas.r.dev@mail.example, don't use for work stuff)"
       - name: Grace Liu
         title: Head of Finance
         company: Northwind Traders
-        email: grace.liu@northwind.co
-        footer: "Thanks!\n\nGRACE LIU\nHead of Finance | Northwind Traders\ngrace.liu@northwind.co\nThis email and any attachments are confidential."
+        email: grace.liu@northwind.example
+        footer: "Thanks!\n\nGRACE LIU\nHead of Finance | Northwind Traders\ngrace.liu@northwind.example\nThis email and any attachments are confidential."
       - name: Dmitri Volkov
         title: Account Executive
         company: Pinecrest Analytics
-        email: d.volkov@pinecrest-analytics.com
-        footer: "Cheers - Dmitri\n\nDmitri Volkov, Account Executive @ Pinecrest Analytics\nd.volkov@pinecrest-analytics.com\nBook time: calendly.com/dvolkov"
+        email: d.volkov@pinecrest-analytics.example
+        footer: "Cheers - Dmitri\n\nDmitri Volkov, Account Executive @ Pinecrest Analytics\nd.volkov@pinecrest-analytics.example\nBook time: book.example/dvolkov"
       - name: Nkechi Obi
         title: Product Manager
         company: Helio Health
-        email: nkechi@heliohealth.org
-        footer: "Nkechi Obi\nProduct Manager\n\nHelio Health\n(on behalf of the care-team pod)\nnkechi@heliohealth.org"
+        email: nkechi@heliohealth.example
+        footer: "Nkechi Obi\nProduct Manager\n\nHelio Health\n(on behalf of the care-team pod)\nnkechi@heliohealth.example"
       - name: Sam Patel
         title: Founder
         company: Tinkerly
-        email: sam@tinkerly.app
-        footer: "sam patel\nfounder @ tinkerly\nsam@tinkerly.app\nps. we're hiring!"
+        email: sam@tinkerly.example
+        footer: "sam patel\nfounder @ tinkerly\nsam@tinkerly.example\nps. we're hiring!"
       - name: Ingrid Halvorsen
         title: Director of Operations
         company: Fjord Logistics AS
-        email: ihalvorsen@fjordlogistics.no
-        footer: "Med vennlig hilsen / Kind regards\nIngrid Halvorsen\nDirector of Operations\nFjord Logistics AS\nihalvorsen@fjordlogistics.no\nAssistant: marte@fjordlogistics.no"
+        email: ihalvorsen@fjordlogistics.example
+        footer: "Med vennlig hilsen / Kind regards\nIngrid Halvorsen\nDirector of Operations\nFjord Logistics AS\nihalvorsen@fjordlogistics.example\nAssistant: marte@fjordlogistics.example"
       - name: Marcus Chen
         title: Senior Recruiter
         company: Brightpath
-        email: marcus.chen@brightpath.com
-        footer: "Marcus Chen (he/him)\nSenior Recruiter, Brightpath\nmarcus.chen@brightpath.com\nReplying to: talent-team@brightpath.com"
+        email: marcus.chen@brightpath.example
+        footer: "Marcus Chen (he/him)\nSenior Recruiter, Brightpath\nmarcus.chen@brightpath.example\nReplying to: talent-team@brightpath.example"
