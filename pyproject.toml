@@ -39,6 +39,10 @@ packages = ["routewise"]
 testpaths = ["tests"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
+filterwarnings = [
+    # third-party: starlette.testclient prefers httpx2; not our code
+    "ignore:Using `httpx` with `starlette.testclient`:DeprecationWarning",
+]
 
 [tool.ruff]
 line-length = 100
