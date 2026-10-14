@@ -284,3 +284,10 @@ def test_json_fields_all_or_nothing_when_partial_disabled():
         )
         == 1.0
     )
+
+
+def test_string_scorers_accept_non_string_values():
+    # YAML packs turn bare numbers like 8812 into ints
+    assert run("contains_any", "order 8812 was late", strings=[8812]) == 1.0
+    assert run("contains_all", "ship on the 21st", strings=[21]) == 1.0
+    assert run("forbidden_strings", "code 4242", strings=[4242]) == 0.0

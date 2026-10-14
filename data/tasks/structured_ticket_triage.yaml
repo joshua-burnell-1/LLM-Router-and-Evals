@@ -1,0 +1,34 @@
+# Support ticket triage: category plus priority under explicit rules.
+suite: scale-triage
+category: structured_output
+tags: [templated, classification]
+system_prompt: |-
+  You triage support tickets. Reply with only JSON: {"category": ..., "priority": ...}.
+  Categories: billing, bug, feature_request, account_access, security, question.
+  Priority rules:
+  - urgent: an outage or failure affecting many users, or any security issue.
+  - high: one customer cannot use the product at all.
+  - normal: something is wrong but the customer can still work (including billing errors).
+  - low: feature requests and how-to questions.
+templates:
+  - id: triage-{{i}}
+    prompt: "{{ticket}}"
+    scoring:
+      - type: exact_match
+        params:
+          extract: json_fields
+          expected: {category: "{{category}}", priority: "{{priority}}"}
+    reference_output: '{"category": "{{ref_category}}", "priority": "{{priority}}"}'
+    cases:
+      - {ticket: "I can't log in since resetting my password, the reset link says expired every time.", category: account_access, ref_category: account_access, priority: high}
+      - {ticket: "Your checkout page has been returning 500 errors for all our customers for the last 20 minutes.", category: bug, ref_category: bug, priority: urgent}
+      - {ticket: "Would love a dark mode for the dashboard.", category: feature_request, ref_category: feature_request, priority: low}
+      - {ticket: "I was billed twice this month for the Pro plan.", category: billing, ref_category: billing, priority: normal}
+      - {ticket: "Someone logged into my account from another country and changed my email. I didn't do this.", category: security, ref_category: security, priority: urgent}
+      - {ticket: "The CSV export puts dates in the wrong column. I can fix it by hand for now.", category: bug, ref_category: bug, priority: normal}
+      - {ticket: "How do I add a second admin to our workspace?", category: question, ref_category: question, priority: low}
+      - {ticket: "Our SSO login fails for everyone in the company since this morning, nobody can get in.", category: [account_access, bug], ref_category: account_access, priority: urgent}
+      - {ticket: "Please cancel my subscription and refund this month, I never used it.", category: billing, ref_category: billing, priority: normal}
+      - {ticket: "The mobile app crashes on launch after the latest update, so I can't use it at all.", category: bug, ref_category: bug, priority: high}
+      - {ticket: "Can you add an API endpoint for bulk deleting contacts?", category: feature_request, ref_category: feature_request, priority: low}
+      - {ticket: "I think our API key was posted publicly on GitHub, what should we do?", category: security, ref_category: security, priority: urgent}

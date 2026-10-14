@@ -1,0 +1,27 @@
+# Short TL;DRs that must keep every figure from the source.
+suite: scale-tldr
+category: summarization
+tags: [templated, fidelity]
+templates:
+  - id: tldr-{{i}}
+    prompt: |-
+      Write a TL;DR of this text in at most 40 words. Keep every number exactly.
+
+      {{text}}
+    scoring:
+      - type: number_preservation
+        params: {source: "{{text}}"}
+      - type: word_count_cap
+        params: {max_words: 40}
+    reference_output: "{{reference}}"
+    cases:
+      - text: "Q3 revenue was $4.8M, up 22% year over year, while churn fell from 3.1% to 2.4%. We added 140 net new customers and expect Q4 revenue between $5.1M and $5.4M."
+        reference: "Q3 revenue hit $4.8M (+22% YoY), churn fell 3.1% to 2.4%, 140 net new customers; Q4 guidance $5.1M to $5.4M."
+      - text: "The clinical pilot enrolled 312 patients across 9 sites. Median wait time dropped from 47 to 18 minutes and no-show rates fell by 35%. Staff overtime rose 6% during the first 8 weeks."
+        reference: "Pilot: 312 patients, 9 sites. Median wait 47 to 18 minutes, no-shows down 35%, but staff overtime up 6% in the first 8 weeks."
+      - text: "Our model reached 91.2% accuracy on the 2,000-example test set, up from 86.5%. Inference cost per 1,000 requests is $0.42 and p50 latency is 230 ms on 4 GPUs."
+        reference: "Accuracy rose from 86.5% to 91.2% on 2,000 test examples; $0.42 per 1,000 requests; p50 latency 230 ms on 4 GPUs."
+      - text: "The city installed 85 new bike racks and 12 km of protected lanes in 2025. Cycling trips rose 28% and reported collisions fell from 64 to 41."
+        reference: "In 2025 the city added 85 bike racks and 12 km of protected lanes; cycling trips +28%, collisions 64 to 41."
+      - text: "Battery tests show 1,200 charge cycles at 80% capacity retention. Charging from 10% to 80% takes 22 minutes, and cell cost fell to $96 per kWh."
+        reference: "1,200 cycles at 80% retention, 10% to 80% charge in 22 minutes, cell cost now $96 per kWh."

@@ -1,0 +1,42 @@
+# Templated multi-step arithmetic. Answers were computed by script, not by hand.
+suite: scale-arithmetic
+category: reasoning
+tags: [templated, numeric]
+templates:
+  - id: arith-shop-{{i}}
+    description: Inventory word problem with a percentage step.
+    prompt: >-
+      A shop starts the day with {{start}} items. It sells {{pct}}% of them before noon,
+      receives a delivery of {{delivery}} items in the afternoon, then sells {{sold}} more
+      before closing. How many items does it have at closing? Give brief working, then the
+      final line 'ANSWER: <number>'.
+    scoring:
+      - type: exact_match
+        params: {extract: regex, pattern: 'ANSWER:\s*\$?([\d,]+(?:\.\d+)?)', expected: "{{answer}}"}
+    reference_output: "After noon: {{step1}}. ANSWER: {{answer}}"
+    cases:
+      - {start: 1020, pct: 15, delivery: 300, sold: 259, answer: 908, step1: 867}
+      - {start: 320, pct: 10, delivery: 575, sold: 214, answer: 649, step1: 288}
+      - {start: 440, pct: 30, delivery: 420, sold: 31, answer: 697, step1: 308}
+      - {start: 1480, pct: 20, delivery: 70, sold: 43, answer: 1211, step1: 1184}
+      - {start: 1300, pct: 40, delivery: 90, sold: 100, answer: 770, step1: 780}
+      - {start: 420, pct: 40, delivery: 85, sold: 226, answer: 111, step1: 252}
+
+  - id: arith-licenses-{{i}}
+    description: Pricing with a volume discount and a setup fee.
+    prompt: >-
+      A team buys {{qty}} software licenses at ${{price}} each. They get a {{disc}}% volume
+      discount on the licenses, then pay a flat ${{fee}} setup fee that is not discounted.
+      What is the total cost in dollars? Give brief working, then the final line
+      'ANSWER: <number>'.
+    scoring:
+      - type: exact_match
+        params: {extract: regex, pattern: 'ANSWER:\s*\$?([\d,]+(?:\.\d+)?)', expected: "{{answer}}"}
+    reference_output: "Subtotal {{subtotal}}. ANSWER: {{answer}}"
+    cases:
+      - {qty: 20, price: 18, disc: 25, fee: 0, subtotal: 360, answer: 270}
+      - {qty: 78, price: 45, disc: 20, fee: 0, subtotal: 3510, answer: 2808}
+      - {qty: 33, price: 12, disc: 25, fee: 150, subtotal: 396, answer: 447}
+      - {qty: 42, price: 30, disc: 10, fee: 0, subtotal: 1260, answer: 1134}
+      - {qty: 78, price: 24, disc: 25, fee: 150, subtotal: 1872, answer: 1554}
+      - {qty: 18, price: 45, disc: 25, fee: 150, subtotal: 810, answer: 757.5}

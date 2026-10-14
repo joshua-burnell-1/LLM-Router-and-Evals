@@ -1,0 +1,45 @@
+# Noisy speech-recognition transcripts to intent plus slots.
+suite: scale-voice
+category: voice
+tags: [templated, asr]
+system_prompt: >-
+  You turn raw speech-recognition transcripts into structured requests. Today is Wednesday
+  2026-10-14. Intents: set_alarm, play_music, send_message, weather, other. Slots: time (HH:MM
+  24-hour), date (YYYY-MM-DD), artist, song, contact, message, location. Reply with only JSON:
+  {"intent": ..., "slots": {...}}. Include only slots the speaker actually said; if the speaker
+  corrects themselves, use the correction.
+templates:
+  - id: asr-{{i}}
+    prompt: "{{utterance}}"
+    scoring:
+      - type: slot_f1
+        params: {gold: "{{gold}}"}
+    reference_output: "{{reference}}"
+    cases:
+      - utterance: "set an alarm for uh six fifteen tomorrow morning"
+        gold: {intent: set_alarm, slots: {time: "06:15", date: "2026-10-15"}}
+        reference: '{"intent": "set_alarm", "slots": {"time": "06:15", "date": "2026-10-15"}}'
+      - utterance: "play um something by by taylor swift"
+        gold: {intent: play_music, slots: {artist: "~taylor swift"}}
+        reference: '{"intent": "play_music", "slots": {"artist": "Taylor Swift"}}'
+      - utterance: "text mom that i'll be like twenty minutes late"
+        gold: {intent: send_message, slots: {contact: "~mom", message: ["~20 minutes late", "~twenty minutes late"]}}
+        reference: '{"intent": "send_message", "slots": {"contact": "Mom", "message": "I''ll be 20 minutes late"}}'
+      - utterance: "whats the weather gonna be in uh in chicago on saturday"
+        gold: {intent: weather, slots: {location: "~chicago", date: "2026-10-17"}}
+        reference: '{"intent": "weather", "slots": {"location": "Chicago", "date": "2026-10-17"}}'
+      - utterance: "wake me up at seven p m no wait seven a m"
+        gold: {intent: set_alarm, slots: {time: "07:00"}}
+        reference: '{"intent": "set_alarm", "slots": {"time": "07:00"}}'
+      - utterance: "play bohemian rhapsody"
+        gold: {intent: play_music, slots: {song: "~bohemian rhapsody"}}
+        reference: '{"intent": "play_music", "slots": {"song": "Bohemian Rhapsody"}}'
+      - utterance: "send a message to jordan saying the meeting moved to three"
+        gold: {intent: send_message, slots: {contact: "~jordan", message: "~moved to"}}
+        reference: '{"intent": "send_message", "slots": {"contact": "Jordan", "message": "The meeting moved to three"}}'
+      - utterance: "uh how how hot is it outside right now"
+        gold: {intent: weather, slots: {}}
+        reference: '{"intent": "weather", "slots": {}}'
+      - utterance: "turn on the um the living room lights"
+        gold: {intent: other, slots: {}}
+        reference: '{"intent": "other", "slots": {}}'

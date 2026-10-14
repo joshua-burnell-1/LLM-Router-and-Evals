@@ -1,0 +1,58 @@
+# Contact extraction from noisy email footers, scored by slot F1.
+suite: scale-contacts
+category: structured_output
+tags: [templated, extraction]
+templates:
+  - id: contact-{{i}}
+    prompt: |-
+      Extract the sender's contact details from this email footer as JSON with keys
+      "name", "title", "company" and "email". Return only the JSON object.
+
+      ---
+      {{footer}}
+    scoring:
+      - type: slot_f1
+        params:
+          gold: {name: "{{name}}", title: "{{title}}", company: "{{company}}", email: "{{email}}"}
+    reference_output: '{"name": "{{name}}", "title": "{{title}}", "company": "{{company}}", "email": "{{email}}"}'
+    cases:
+      - name: Aisha Bello
+        title: VP of Partnerships
+        company: Lumen Freight
+        email: aisha.bello@lumenfreight.com
+        footer: "Best,\nAisha Bello | VP of Partnerships\nLumen Freight - moving what matters\naisha.bello@lumenfreight.com | Sent from my phone, pls excuse typos"
+      - name: Tomás Ruiz
+        title: Staff Engineer
+        company: Quarry Labs
+        email: truiz@quarrylabs.io
+        footer: "--\nTomás Ruiz\nStaff Engineer, Platform\nQuarry Labs\nPronouns: he/him\nwork: truiz@quarrylabs.io (personal: tomas.r.dev@gmail.com, don't use for work stuff)"
+      - name: Grace Liu
+        title: Head of Finance
+        company: Northwind Traders
+        email: grace.liu@northwind.co
+        footer: "Thanks!\n\nGRACE LIU\nHead of Finance | Northwind Traders\ngrace.liu@northwind.co\nThis email and any attachments are confidential."
+      - name: Dmitri Volkov
+        title: Account Executive
+        company: Pinecrest Analytics
+        email: d.volkov@pinecrest-analytics.com
+        footer: "Cheers - Dmitri\n\nDmitri Volkov, Account Executive @ Pinecrest Analytics\nd.volkov@pinecrest-analytics.com\nBook time: calendly.com/dvolkov"
+      - name: Nkechi Obi
+        title: Product Manager
+        company: Helio Health
+        email: nkechi@heliohealth.org
+        footer: "Nkechi Obi\nProduct Manager\n\nHelio Health\n(on behalf of the care-team pod)\nnkechi@heliohealth.org"
+      - name: Sam Patel
+        title: Founder
+        company: Tinkerly
+        email: sam@tinkerly.app
+        footer: "sam patel\nfounder @ tinkerly\nsam@tinkerly.app\nps. we're hiring!"
+      - name: Ingrid Halvorsen
+        title: Director of Operations
+        company: Fjord Logistics
+        email: ihalvorsen@fjordlogistics.no
+        footer: "Med vennlig hilsen / Kind regards\nIngrid Halvorsen\nDirector of Operations\nFjord Logistics AS\nihalvorsen@fjordlogistics.no\nAssistant: marte@fjordlogistics.no"
+      - name: Marcus Chen
+        title: Senior Recruiter
+        company: Brightpath
+        email: marcus.chen@brightpath.com
+        footer: "Marcus Chen (he/him)\nSenior Recruiter, Brightpath\nmarcus.chen@brightpath.com\nReplying to: talent-team@brightpath.com"
