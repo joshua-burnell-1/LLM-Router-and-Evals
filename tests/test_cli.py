@@ -97,3 +97,16 @@ def test_rescore_reports_count(env, capsys):
 
 def test_no_command_prints_help(capsys):
     assert main([]) == 2
+
+
+def test_snapshot_and_gate_can_be_scoped_to_a_suite(env, capsys):
+    import json
+
+    baseline = env / "core.json"
+    assert main(["snapshot", "--suite", "core", "--out", str(baseline)]) == 0
+    data = json.loads(baseline.read_text())
+    # only core tasks were seeded, so scoping keeps every cell
+    assert data["models"]["big"]["overall"]["n"] == 8
+    assert main(["snapshot", "--suite", "scale-hard", "--out", str(env / "hard.json")]) == 0
+    assert json.loads((env / "hard.json").read_text())["models"] == {}
+    assert main(["gate", "--suite", "core", "--baseline", str(baseline)]) == 0

@@ -36,15 +36,20 @@ DEFAULT_BASELINE = PROJECT_ROOT / "results" / "baseline.json"
 class Context:
     """Lazily loaded store, tasks, registry, leaderboard, and router."""
 
-    def __init__(self, db: str | None):
+    def __init__(self, db: str | None, suites: list[str] | None = None):
         self.store = ResultStore(db or default_db_path())
-        self.tasks = all_tasks()
+        self.tasks = all_tasks(suites=suites)
         self.registry = load_models(include_disabled=True)
         self.config = load_router_config()
         self.board = Leaderboard.from_store(self.store, current=self.tasks)
         self.router = Router(
             self.board, self.config, self.registry, examples=ExampleIndex.from_tasks(self.tasks)
         )
+
+
+def _suites(args: argparse.Namespace) -> list[str] | None:
+    value = getattr(args, "suite", None)
+    return [v.strip() for v in value.split(",") if v.strip()] if value else None
 
 
 def cmd_models(args: argparse.Namespace) -> int:
@@ -89,7 +94,7 @@ def build_report(ctx: Context, modes: Iterable[str]) -> str:
 
 
 def cmd_report(args: argparse.Namespace) -> int:
-    ctx = Context(args.db)
+    ctx = Context(args.db, _suites(args))
     if not ctx.board.models():
         print("no results yet: run `routewise eval --limit 4` first", file=sys.stderr)
         return 2
@@ -156,7 +161,7 @@ def cmd_replay(args: argparse.Namespace) -> int:
 def cmd_snapshot(args: argparse.Namespace) -> int:
     from routewise.router.gate import save_snapshot, snapshot
 
-    ctx = Context(args.db)
+    ctx = Context(args.db, _suites(args))
     save_snapshot(snapshot(ctx.board), args.out)
     print(f"wrote baseline {args.out}")
     return 0
@@ -165,7 +170,7 @@ def cmd_snapshot(args: argparse.Namespace) -> int:
 def cmd_gate(args: argparse.Namespace) -> int:
     from routewise.router.gate import gate, load_snapshot
 
-    ctx = Context(args.db)
+    ctx = Context(args.db, _suites(args))
     result = gate(
         ctx.board, load_snapshot(args.baseline), threshold=args.threshold, min_n=args.min_n
     )
@@ -207,6 +212,7 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("report", help="markdown results tables")
     p.add_argument("--out")
     p.add_argument("--modes", default="quality,balanced,cost")
+    p.add_argument("--suite", help="limit to suites, e.g. core")
     p.set_defaults(fn=cmd_report)
 
     p = sub.add_parser("route", help="route one query")
@@ -221,12 +227,14 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("snapshot", help="save a quality baseline")
     p.add_argument("--out", default=str(DEFAULT_BASELINE))
+    p.add_argument("--suite", help="limit the baseline to suites, e.g. core")
     p.set_defaults(fn=cmd_snapshot)
 
     p = sub.add_parser("gate", help="fail if quality regressed vs baseline")
     p.add_argument("--baseline", default=str(DEFAULT_BASELINE))
     p.add_argument("--threshold", type=float, default=0.05)
     p.add_argument("--min-n", type=int, default=2)
+    p.add_argument("--suite", help="limit to suites; must match the baseline's scope")
     p.set_defaults(fn=cmd_gate)
 
     sub.add_parser("rescore", help="rerun scorers on stored outputs").set_defaults(fn=cmd_rescore)

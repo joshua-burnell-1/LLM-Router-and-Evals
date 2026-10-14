@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      max_cost:
+        description: "Stop the eval run past this many USD"
+        default: "1.00"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - name: Install
+        run: uv sync --locked
+      - name: Lint
+        run: uv run ruff check .
+      - name: Format
+        run: uv run ruff format --check .
+      - name: Tests (offline, no API calls)
+        run: uv run pytest -q
+
+  # Eval-gated CI: run the core evals against real APIs and fail if any (model, category)
+  # quality dropped more than the threshold below results/baseline-core.json.
+  # Manual only, because it spends money. Needs repository secrets for the providers in use.
+  eval-gate:
+    if: github.event_name == 'workflow_dispatch'
+    needs: test
+    runs-on: ubuntu-latest
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      ROUTEWISE_DB: ci-results.db
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --locked
+      - name: Run core evals
+        run: uv run routewise eval --suite core --max-cost "${{ inputs.max_cost }}"
+      - name: Gate against baseline
+        run: uv run routewise gate --suite core --baseline results/baseline-core.json --threshold 0.05
+      - name: Report
+        if: always()
+        run: uv run routewise report --suite core --out eval-report.md
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eval-report
+          path: eval-report.md
