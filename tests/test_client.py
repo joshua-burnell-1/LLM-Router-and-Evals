@@ -225,3 +225,11 @@ async def test_litellm_backend_maps_response():
     assert seen["model"] == "anthropic/m" and seen["max_tokens"] == 50
     assert (raw.text, raw.input_tokens, raw.output_tokens) == ("hello", 12, 3)
     assert not raw.tokens_estimated
+
+
+def test_claude_cli_session_limit_is_quota_exhausted():
+    from routewise.models.client import QuotaExhaustedError
+
+    msg = "You've hit your session limit · resets 7:50am (UTC)"
+    with pytest.raises(QuotaExhaustedError):
+        ClaudeCodeBackend.parse(_cli_json(is_error=True, result=msg), "x")

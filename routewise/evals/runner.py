@@ -23,7 +23,7 @@ from routewise.config import TASKS_DIR, default_db_path
 from routewise.evals.framework import EvalTask, LLMJudge, score_output
 from routewise.evals.loader import all_tasks
 from routewise.evals.store import ResultRow, ResultStore, now_iso
-from routewise.models.client import ChatResult, chat
+from routewise.models.client import ChatResult, QuotaExhaustedError, chat
 from routewise.models.registry import load_models
 
 DEFAULT_JUDGE_MODEL = "claude-haiku-5-5"
@@ -38,6 +38,7 @@ class RunSummary:
     total_cost_usd: float = 0.0
     judge_cost_usd: float = 0.0
     stopped_for_budget: bool = False
+    stopped_for_quota: bool = False
 
 
 async def run_eval(
@@ -72,6 +73,8 @@ async def run_eval(
     async def run_one(task: EvalTask, model_id: str, sample: int) -> None:
         async with semaphore:
             async with lock:
+                if summary.stopped_for_quota:
+                    return
                 if max_cost is not None and summary.total_cost_usd >= max_cost:
                     summary.stopped_for_budget = True
                     return
@@ -109,6 +112,10 @@ async def run_eval(
                 async with lock:
                     summary.total_cost_usd += scored.judge_cost_usd
                     summary.judge_cost_usd += scored.judge_cost_usd
+            except QuotaExhaustedError as exc:  # plan limit hit: stop starting new calls
+                summary.stopped_for_quota = True
+                row.error = f"{type(exc).__name__}: {exc}"[:2000]
+                row.quality = None
             except Exception as exc:  # recorded, retried on the next run
                 row.error = f"{type(exc).__name__}: {exc}"[:2000]
                 row.quality = None
@@ -213,6 +220,11 @@ def main(argv: Iterable[str] | None = None) -> int:
         f"{summary.n_errors} errors, ${summary.total_cost_usd:.4f} "
         f"(judge ${summary.judge_cost_usd:.4f})"
         + (" [stopped at budget cap]" if summary.stopped_for_budget else "")
+        + (
+            " [stopped: plan or credit limit reached; rerun later]"
+            if summary.stopped_for_quota
+            else ""
+        )
     )
     return 1 if summary.n_errors else 0
 

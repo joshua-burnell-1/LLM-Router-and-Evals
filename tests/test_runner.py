@@ -123,3 +123,21 @@ def test_cli_limit_and_models(tmp_path, monkeypatch, capsys):
     rows = ResultStore(db).rows(include_errors=True)
     assert len(rows) == 2 and {r.model_id for r in rows} == {"m1"}
     assert "[2/2]" in capsys.readouterr().out
+
+
+async def test_quota_exhaustion_stops_the_run(store):
+    from routewise.models.client import QuotaExhaustedError
+
+    class QuotaChat(FakeChat):
+        async def __call__(self, model_id, messages, **kwargs):
+            self.calls.append(model_id)
+            raise QuotaExhaustedError("You've hit your session limit")
+
+    chat = QuotaChat()
+    many = [make_task(f"t{i}") for i in range(5)]
+    summary = await run_eval(
+        many, ["m"], store, concurrency=1, judge=None, chat_fn=chat, progress=lambda _: None
+    )
+    assert summary.stopped_for_quota
+    assert len(chat.calls) == 1
+    assert summary.n_errors == 1

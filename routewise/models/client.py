@@ -44,6 +44,10 @@ class PermanentError(RuntimeError):
     """Not worth retrying: bad request, unknown model, no credits."""
 
 
+class QuotaExhaustedError(PermanentError):
+    """The account's plan or credit limit is used up: stop the run, retry after it resets."""
+
+
 @dataclass
 class RawCompletion:
     text: str
@@ -155,6 +159,7 @@ class LiteLLMBackend:
 
 
 _TRANSIENT_CLI_MARKERS = ("rate limit", "429", "overloaded", "529", "timeout", "temporarily")
+_QUOTA_CLI_MARKERS = ("session limit", "usage limit", "weekly limit", "credit balance")
 
 
 class ClaudeCodeBackend:
@@ -189,6 +194,8 @@ class ClaudeCodeBackend:
             raise TransientError(f"claude CLI returned non-JSON output: {stdout[:200]!r}") from exc
         if payload.get("is_error"):
             message = str(payload.get("result") or payload.get("subtype") or "unknown error")
+            if any(marker in message.lower() for marker in _QUOTA_CLI_MARKERS):
+                raise QuotaExhaustedError(message)
             if any(marker in message.lower() for marker in _TRANSIENT_CLI_MARKERS):
                 raise TransientError(message)
             raise PermanentError(message)
