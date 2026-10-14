@@ -68,16 +68,9 @@ class EvalTask:
 
     @property
     def version(self) -> str:
-        """Content hash: editing a prompt or its scoring invalidates old results."""
-        blob = json.dumps(
-            [
-                self.prompt,
-                self.system_prompt,
-                [[s.type, s.params, s.weight, s.required] for s in self.scoring],
-            ],
-            sort_keys=True,
-            default=str,
-        )
+        """Hash of what the model sees. Editing the prompt invalidates old results; editing
+        scorers or gold answers does not (apply those with `routewise rescore`, no new calls)."""
+        blob = json.dumps([self.prompt, self.system_prompt], sort_keys=True)
         return hashlib.sha256(blob.encode()).hexdigest()[:12]
 
 

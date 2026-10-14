@@ -187,6 +187,14 @@ def cmd_rescore(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_audit(args: argparse.Namespace) -> int:
+    from routewise.evals.audit import audit
+
+    ctx = Context(args.db, _suites(args))
+    print(audit(ctx.store.rows(current=ctx.tasks)).summary())
+    return 0
+
+
 def cmd_dashboard(args: argparse.Namespace) -> int:
     app = Path(__file__).parent / "dashboard" / "app.py"
     return subprocess.call([sys.executable, "-m", "streamlit", "run", str(app)])
@@ -238,6 +246,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.set_defaults(fn=cmd_gate)
 
     sub.add_parser("rescore", help="rerun scorers on stored outputs").set_defaults(fn=cmd_rescore)
+    p = sub.add_parser("audit", help="find suspect gold, saturated and flaky tasks")
+    p.add_argument("--suite", help="limit to suites")
+    p.set_defaults(fn=cmd_audit)
     sub.add_parser("dashboard", help="launch Streamlit").set_defaults(fn=cmd_dashboard)
 
     p = sub.add_parser("serve", help="OpenAI-compatible routing endpoint")

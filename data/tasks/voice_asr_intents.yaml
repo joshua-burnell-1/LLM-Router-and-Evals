@@ -41,5 +41,5 @@ templates:
         gold: {intent: weather, slots: {}}
         reference: '{"intent": "weather", "slots": {}}'
       - utterance: "turn on the um the living room lights"
-        gold: {intent: other, slots: {}}
-        reference: '{"intent": "other", "slots": {}}'
+        gold: {intent: other, slots: {location: "~living room"}}
+        reference: '{"intent": "other", "slots": {"location": "living room"}}'

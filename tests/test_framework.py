@@ -296,3 +296,25 @@ def test_string_scorers_accept_non_string_values():
 def test_regex_match():
     assert run("regex_match", "Quietly, the river ran.", pattern=r"^\W*quietly\b") == 1.0
     assert run("regex_match", "The river ran quietly.", pattern=r"^\W*quietly\b") == 0.0
+
+
+def test_task_version_ignores_scoring_so_gold_fixes_rescore_for_free():
+    a = EvalTask(
+        id="x",
+        category="reasoning",
+        prompt="p",
+        scoring=[ScorerSpec("exact_match", {"expected": 1})],
+    )
+    b = EvalTask(
+        id="x",
+        category="reasoning",
+        prompt="p",
+        scoring=[ScorerSpec("exact_match", {"expected": 2})],
+    )
+    assert a.version == b.version
+
+
+def test_task_version_changes_with_system_prompt():
+    a = EvalTask(id="x", category="reasoning", prompt="p", scoring=[], system_prompt="s1")
+    b = EvalTask(id="x", category="reasoning", prompt="p", scoring=[], system_prompt="s2")
+    assert a.version != b.version

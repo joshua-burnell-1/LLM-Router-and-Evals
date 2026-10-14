@@ -22,7 +22,7 @@ templates:
         email: aisha.bello@lumenfreight.com
         footer: "Best,\nAisha Bello | VP of Partnerships\nLumen Freight - moving what matters\naisha.bello@lumenfreight.com | Sent from my phone, pls excuse typos"
       - name: Tomás Ruiz
-        title: Staff Engineer
+        title: Staff Engineer, Platform
         company: Quarry Labs
         email: truiz@quarrylabs.io
         footer: "--\nTomás Ruiz\nStaff Engineer, Platform\nQuarry Labs\nPronouns: he/him\nwork: truiz@quarrylabs.io (personal: tomas.r.dev@gmail.com, don't use for work stuff)"
@@ -48,7 +48,7 @@ templates:
         footer: "sam patel\nfounder @ tinkerly\nsam@tinkerly.app\nps. we're hiring!"
       - name: Ingrid Halvorsen
         title: Director of Operations
-        company: Fjord Logistics
+        company: Fjord Logistics AS
         email: ihalvorsen@fjordlogistics.no
         footer: "Med vennlig hilsen / Kind regards\nIngrid Halvorsen\nDirector of Operations\nFjord Logistics AS\nihalvorsen@fjordlogistics.no\nAssistant: marte@fjordlogistics.no"
       - name: Marcus Chen
