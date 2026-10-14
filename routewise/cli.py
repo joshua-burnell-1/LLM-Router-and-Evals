@@ -26,6 +26,7 @@ from routewise.config import PROJECT_ROOT, default_db_path
 from routewise.evals.loader import all_tasks
 from routewise.evals.store import ResultStore
 from routewise.models.registry import MissingCredentialsError, load_models, resolve_backend
+from routewise.router.classifier import ExampleIndex
 from routewise.router.leaderboard import Leaderboard
 from routewise.router.router import Router, load_router_config
 
@@ -41,7 +42,9 @@ class Context:
         self.registry = load_models(include_disabled=True)
         self.config = load_router_config()
         self.board = Leaderboard.from_store(self.store, current=self.tasks)
-        self.router = Router(self.board, self.config, self.registry)
+        self.router = Router(
+            self.board, self.config, self.registry, examples=ExampleIndex.from_tasks(self.tasks)
+        )
 
 
 def cmd_models(args: argparse.Namespace) -> int:

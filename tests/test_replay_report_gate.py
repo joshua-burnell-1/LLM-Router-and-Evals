@@ -176,3 +176,30 @@ async def test_rescore_updates_quality_and_keeps_judge_component(tmp_path):
     assert row.quality == pytest.approx(0.75)
     detail = json.loads(row.score_detail)
     assert [d["value"] for d in detail] == [1.0, 0.5]
+
+
+def test_replay_classifier_is_leave_one_out(synthetic_registry):
+    # Two tasks with identical text but different labels: each can only be predicted from
+    # the other, so leave-one-out accuracy on them is 0 even though in-sample would be 1.
+    twins = [
+        make_task("twin-a", "safety", "zorbly widget alignment quux"),
+        make_task("twin-b", "reasoning", "zorbly widget alignment quux"),
+    ]
+    rows = synthetic_rows() + [
+        ResultRow(
+            task_id=t.id,
+            task_version="v1",
+            model_id=m,
+            created_at="x",
+            category=t.category,
+            quality=0.9,
+            cost_usd=0.001,
+            latency_s=1.0,
+        )
+        for t in twins
+        for m in ("big", "mid", "small")
+    ]
+    summary = replay(rows, twins, "balanced", CONFIG, synthetic_registry)
+    predicted = {t["task_id"]: t["predicted_category"] for t in summary.per_task}
+    assert predicted == {"twin-a": "reasoning", "twin-b": "safety"}
+    assert summary.classifier_accuracy == 0.0

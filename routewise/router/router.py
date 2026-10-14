@@ -18,7 +18,13 @@ from routewise.config import config_path, default_db_path, load_yaml
 from routewise.evals.store import ResultStore
 from routewise.models.client import ChatResult, Message, chat
 from routewise.models.registry import ModelSpec, flagship, load_models
-from routewise.router.classifier import GENERAL, Classification, classify, classify_async
+from routewise.router.classifier import (
+    GENERAL,
+    Classification,
+    ExampleIndex,
+    classify,
+    classify_async,
+)
 from routewise.router.leaderboard import OVERALL, CellStats, Leaderboard
 
 
@@ -104,7 +110,9 @@ class Router:
         config: RouterConfig | None = None,
         registry: Mapping[str, ModelSpec] | None = None,
         models: list[str] | None = None,
+        examples: ExampleIndex | None = None,
     ):
+        self.examples = examples
         self.leaderboard = leaderboard
         self.config = config or load_router_config()
         self.registry = registry if registry is not None else load_models(include_disabled=True)
@@ -184,7 +192,8 @@ class Router:
     def route(
         self, query: str, mode: str | None = None, *, category: str | None = None
     ) -> RouteDecision:
-        return self._decide(classify(query), mode or self.config.default_mode, category)
+        classification = classify(query, self.examples)
+        return self._decide(classification, mode or self.config.default_mode, category)
 
     async def aroute(
         self,
@@ -244,7 +253,7 @@ class Router:
 
     def always_flagship(self, query: str) -> RouteDecision:
         """Baseline for savings: always send the query to the most expensive model."""
-        classification = classify(query)
+        classification = classify(query, self.examples)
         model = self.flagship_model()
         candidates, used = self.rank(classification.category, "quality")
         chosen = [c for c in candidates if c.model_id == model]
@@ -269,7 +278,9 @@ class Router:
     ) -> tuple[RouteDecision, ChatResult, list[str]]:
         """Route, call the winner, and fail over down the ranking if a call errors."""
         messages = [{"role": "user", "content": query}] if isinstance(query, str) else query
-        text = next((m["content"] for m in reversed(messages) if m["role"] == "user"), "")
+        system = "\n\n".join(m["content"] for m in messages if m["role"] == "system")
+        last_user = next((m["content"] for m in reversed(messages) if m["role"] == "user"), "")
+        text = f"{system}\n\n{last_user}" if system else last_user
         decision = await self.aroute(text, mode, chat_fn=chat_fn)
         attempts: list[str] = []
         last_error: Exception | None = None
@@ -292,7 +303,13 @@ def default_router(refresh: bool = False) -> Router:
     """A Router over data/results.db (or $ROUTEWISE_DB) and the repo configs."""
     global _DEFAULT_ROUTER
     if _DEFAULT_ROUTER is None or refresh:
-        _DEFAULT_ROUTER = Router(Leaderboard.from_store(ResultStore(default_db_path())))
+        from routewise.evals.loader import all_tasks
+
+        tasks = all_tasks()
+        _DEFAULT_ROUTER = Router(
+            Leaderboard.from_store(ResultStore(default_db_path()), current=tasks),
+            examples=ExampleIndex.from_tasks(tasks),
+        )
     return _DEFAULT_ROUTER
 
 

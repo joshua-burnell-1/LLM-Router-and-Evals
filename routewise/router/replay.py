@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from routewise.evals.framework import EvalTask
 from routewise.evals.store import ResultRow
 from routewise.models.registry import ModelSpec, flagship
-from routewise.router.classifier import classify
+from routewise.router.classifier import ExampleIndex, task_text
 from routewise.router.leaderboard import Leaderboard
 from routewise.router.router import NoDataError, Router, RouterConfig
 
@@ -89,8 +89,11 @@ def replay(
     registry: Mapping[str, ModelSpec],
     *,
     leave_one_out: bool = True,
+    use_examples: bool = True,
 ) -> ReplaySummary:
+    tasks = list(tasks)
     rows = [r for r in rows if r.quality is not None and not r.error]
+    full_index = ExampleIndex.from_tasks(tasks) if use_examples else None
     models = sorted({r.model_id for r in rows})
     means = _mean_by_task_model(rows)
     flag = flagship([registry[m] for m in models if m in registry]).id if models else None
@@ -108,11 +111,14 @@ def replay(
             if leave_one_out
             else full_board
         )
+        index = full_index.without(task.id) if full_index and leave_one_out else full_index
         try:
-            decision = Router(board, config, registry, models).route(task.prompt, mode)
+            decision = Router(board, config, registry, models, examples=index).route(
+                task_text(task), mode
+            )
         except NoDataError:
             continue
-        predicted = classify(task.prompt).category
+        predicted = decision.classification.category
         correct += predicted == task.category
 
         best_q = max(means[(task.id, m)][0] for m in models)
