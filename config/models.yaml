@@ -1,0 +1,69 @@
+# Model registry. Prices are USD per 1M tokens (standard tier, prompts under the long-context
+# threshold). `backend: auto` uses the provider API key through LiteLLM when it is set, and
+# otherwise falls back to the local `claude` CLI for Claude models (your Claude plan).
+#
+# Claude prices verified 2026-10-14 against the list-price cost basis the claude CLI reports.
+# OpenAI and Gemini prices come from third-party trackers (Oct 2026) and are NOT verified
+# against the providers' own pricing pages: price_verified is false and they are disabled
+# until you add keys. Check https://openai.com/api/pricing and https://ai.google.dev/pricing.
+
+models:
+  - id: claude-opus-5-5
+    provider: anthropic
+    litellm_model: anthropic/claude-opus-5-5
+    cli_model: opus
+    input_price: 4.00
+    output_price: 20.00
+    tier: flagship
+
+  - id: claude-sonnet-5-5
+    provider: anthropic
+    litellm_model: anthropic/claude-sonnet-5-5
+    cli_model: sonnet
+    input_price: 2.00
+    output_price: 10.00
+    tier: mid
+
+  - id: claude-haiku-5-5
+    provider: anthropic
+    litellm_model: anthropic/claude-haiku-5-5
+    cli_model: haiku
+    input_price: 0.10
+    output_price: 0.50
+    tier: budget
+
+  - id: gpt-6-astra
+    provider: openai
+    litellm_model: openai/gpt-6-astra  # UNVERIFIED model id and price
+    input_price: 10.00
+    output_price: 50.00
+    tier: flagship
+    enabled: false
+    price_verified: false
+
+  - id: gpt-6-luna
+    provider: openai
+    litellm_model: openai/gpt-6-luna  # UNVERIFIED model id and price
+    input_price: 0.10
+    output_price: 0.50
+    tier: budget
+    enabled: false
+    price_verified: false
+
+  - id: gemini-3-1-pro
+    provider: gemini
+    litellm_model: gemini/gemini-3.1-pro  # UNVERIFIED model id and price
+    input_price: 2.00
+    output_price: 12.00
+    tier: flagship
+    enabled: false
+    price_verified: false
+
+  - id: gemini-2-5-flash
+    provider: gemini
+    litellm_model: gemini/gemini-2.5-flash  # UNVERIFIED price
+    input_price: 0.30
+    output_price: 2.50
+    tier: budget
+    enabled: false
+    price_verified: false
