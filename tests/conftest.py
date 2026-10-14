@@ -36,3 +36,51 @@ class FakeChat:
 @pytest.fixture
 def fake_chat():
     return FakeChat()
+
+
+def synthetic_rows():
+    """Three models with a clear quality/cost/latency trade-off in two categories."""
+    from routewise.evals.store import ResultRow
+
+    profile = {
+        # model: {category: (quality, cost, latency)}
+        "big": {"reasoning": (0.95, 0.010, 3.0), "safety": (0.95, 0.010, 3.0)},
+        "mid": {"reasoning": (0.90, 0.002, 1.5), "safety": (0.94, 0.002, 1.5)},
+        "small": {"reasoning": (0.60, 0.0002, 0.8), "safety": (0.93, 0.0002, 0.8)},
+    }
+    rows = []
+    for model, cats in profile.items():
+        for category, (q, cost, lat) in cats.items():
+            for i in range(4):
+                rows.append(
+                    ResultRow(
+                        task_id=f"{category}-{i}",
+                        task_version="v1",
+                        model_id=model,
+                        created_at="2026-10-14T00:00:00+00:00",
+                        category=category,
+                        quality=q,
+                        cost_usd=cost,
+                        latency_s=lat,
+                        input_tokens=100,
+                        output_tokens=50,
+                    )
+                )
+    return rows
+
+
+SYNTHETIC_REGISTRY_YAML = """
+models:
+  - {id: big, provider: mock, input_price: 4, output_price: 20}
+  - {id: mid, provider: mock, input_price: 2, output_price: 10}
+  - {id: small, provider: mock, input_price: 0.1, output_price: 0.5}
+"""
+
+
+@pytest.fixture
+def synthetic_registry(tmp_path):
+    from routewise.models.registry import load_models
+
+    path = tmp_path / "models.yaml"
+    path.write_text(SYNTHETIC_REGISTRY_YAML)
+    return load_models(path)

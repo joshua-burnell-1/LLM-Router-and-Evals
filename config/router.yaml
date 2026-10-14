@@ -1,0 +1,27 @@
+# Routing policy. Per mode:
+#   score = quality * quality_weight - normalized_cost * cost - normalized_latency * latency
+# Cost and latency are normalized by the most expensive / slowest candidate (0-1).
+# max_quality_drop: never pick a model more than this below the category's best quality.
+# quality_floor: never pick a model below this absolute quality.
+default_mode: balanced
+min_samples: 2  # a (model, category) cell needs this many results to be trusted
+
+modes:
+  quality:
+    quality: 1.0
+    cost: 0.02
+    latency: 0.02
+  balanced:
+    quality: 1.0
+    cost: 0.25
+    latency: 0.10
+    max_quality_drop: 0.10
+  cost:
+    quality: 1.0
+    cost: 1.0
+    latency: 0.10
+    max_quality_drop: 0.15
+
+classifier:
+  llm_fallback: false  # set true to classify rule misses with a cheap model
+  llm_model: claude-haiku-5-5
