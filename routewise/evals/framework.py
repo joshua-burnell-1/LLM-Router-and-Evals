@@ -137,9 +137,12 @@ def _canonical_number(raw: str) -> str:
 def values_match(gold: Any, pred: Any) -> bool:
     """Gold-vs-predicted value match.
 
-    A list of gold values means "any of these". A string starting with "~" means "the
-    prediction contains this text". Numbers compare numerically; text compares normalized.
+    A list of gold values means "any of these", unless the prediction is also a list, in which
+    case the two lists must hold the same values in any order. A string starting with "~" means
+    "the prediction contains this text". Numbers compare numerically; text compares normalized.
     """
+    if isinstance(gold, list) and isinstance(pred, list):
+        return sorted(map(normalize_text, gold)) == sorted(map(normalize_text, pred))
     if isinstance(gold, list):
         return any(values_match(g, pred) for g in gold)
     if pred is None:
@@ -197,8 +200,12 @@ def exact_match(
     extract: str = "text",
     pattern: str | None = None,
     fields: list[str] | None = None,
+    partial: bool = True,
 ) -> Score:
-    """Exact answer check. `extract`: text | number | regex | json_fields."""
+    """Exact answer check. `extract`: text | number | regex | json_fields.
+
+    json_fields gives partial credit per field unless `partial=False` (all or nothing).
+    """
     if extract == "json_fields":
         try:
             pred = extract_json(output)
@@ -209,8 +216,9 @@ def exact_match(
         keys = fields or list(expected)
         wrong = [k for k in keys if not values_match(expected[k], pred.get(k))]
         hit = len(keys) - len(wrong)
+        value = hit / len(keys) if partial else float(not wrong)
         return Score(
-            hit / len(keys),
+            value,
             f"{hit}/{len(keys)} fields match" + (f"; wrong: {wrong}" if wrong else ""),
         )
     if extract == "number":

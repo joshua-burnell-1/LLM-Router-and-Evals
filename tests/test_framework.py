@@ -252,3 +252,35 @@ def test_task_messages_include_system_prompt():
 def test_unknown_category_rejected():
     with pytest.raises(ValueError):
         EvalTask(id="x", category="poetry", prompt="p", scoring=[])
+
+
+def test_json_fields_compares_list_values_as_sets():
+    expected = {"attendees": ["dana@acme.io", "li@acme.io"]}
+    out_ok = '{"attendees": ["Li@acme.io", "dana@acme.io"]}'
+    out_bad = '{"attendees": ["dana@acme.io"]}'
+    assert run("exact_match", out_ok, expected=expected, extract="json_fields") == 1.0
+    assert run("exact_match", out_bad, expected=expected, extract="json_fields") == 0.0
+
+
+def test_json_fields_all_or_nothing_when_partial_disabled():
+    expected = {"a": 1, "b": 2}
+    assert (
+        run(
+            "exact_match",
+            '{"a": 1, "b": 3}',
+            expected=expected,
+            extract="json_fields",
+            partial=False,
+        )
+        == 0.0
+    )
+    assert (
+        run(
+            "exact_match",
+            '{"a": 1, "b": 2}',
+            expected=expected,
+            extract="json_fields",
+            partial=False,
+        )
+        == 1.0
+    )
