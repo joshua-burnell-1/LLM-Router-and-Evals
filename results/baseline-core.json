@@ -1,0 +1,83 @@
+{
+  "created_at": "2026-10-14T13:22:52+00:00",
+  "models": {
+    "claude-haiku-5-5": {
+      "overall": {
+        "mean_quality": 0.9688,
+        "n": 32
+      },
+      "reasoning": {
+        "mean_quality": 0.9844,
+        "n": 8
+      },
+      "safety": {
+        "mean_quality": 1.0,
+        "n": 4
+      },
+      "structured_output": {
+        "mean_quality": 0.9896,
+        "n": 8
+      },
+      "summarization": {
+        "mean_quality": 0.9167,
+        "n": 6
+      },
+      "voice": {
+        "mean_quality": 0.9514,
+        "n": 6
+      }
+    },
+    "claude-opus-5-5": {
+      "overall": {
+        "mean_quality": 0.9909,
+        "n": 32
+      },
+      "reasoning": {
+        "mean_quality": 1.0,
+        "n": 8
+      },
+      "safety": {
+        "mean_quality": 1.0,
+        "n": 4
+      },
+      "structured_output": {
+        "mean_quality": 0.9792,
+        "n": 8
+      },
+      "summarization": {
+        "mean_quality": 0.9792,
+        "n": 6
+      },
+      "voice": {
+        "mean_quality": 1.0,
+        "n": 6
+      }
+    },
+    "claude-sonnet-5-5": {
+      "overall": {
+        "mean_quality": 0.9792,
+        "n": 32
+      },
+      "reasoning": {
+        "mean_quality": 1.0,
+        "n": 8
+      },
+      "safety": {
+        "mean_quality": 1.0,
+        "n": 4
+      },
+      "structured_output": {
+        "mean_quality": 0.9792,
+        "n": 8
+      },
+      "summarization": {
+        "mean_quality": 1.0,
+        "n": 6
+      },
+      "voice": {
+        "mean_quality": 0.9167,
+        "n": 6
+      }
+    }
+  }
+}

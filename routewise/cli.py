@@ -195,6 +195,35 @@ def cmd_audit(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_export(args: argparse.Namespace) -> int:
+    import json
+    from dataclasses import asdict
+
+    store = ResultStore(args.db or default_db_path())
+    rows = store.rows(include_errors=False)
+    with open(args.out, "w", encoding="utf-8") as fh:
+        for row in rows:
+            fh.write(json.dumps(asdict(row), ensure_ascii=False) + "\n")
+    print(f"exported {len(rows)} rows to {args.out}")
+    return 0
+
+
+def cmd_import(args: argparse.Namespace) -> int:
+    import json
+
+    from routewise.evals.store import ResultRow
+
+    store = ResultStore(args.db or default_db_path())
+    n = 0
+    with open(args.path, encoding="utf-8") as fh:
+        for line in fh:
+            if line.strip():
+                store.record(ResultRow(**json.loads(line)))
+                n += 1
+    print(f"imported {n} rows into {store.path}")
+    return 0
+
+
 def cmd_dashboard(args: argparse.Namespace) -> int:
     app = Path(__file__).parent / "dashboard" / "app.py"
     return subprocess.call([sys.executable, "-m", "streamlit", "run", str(app)])
@@ -249,6 +278,12 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("audit", help="find suspect gold, saturated and flaky tasks")
     p.add_argument("--suite", help="limit to suites")
     p.set_defaults(fn=cmd_audit)
+    p = sub.add_parser("export", help="write results to JSONL (shareable, no secrets)")
+    p.add_argument("--out", default="results/seed_results.jsonl")
+    p.set_defaults(fn=cmd_export)
+    p = sub.add_parser("import", help="load results from a JSONL export")
+    p.add_argument("path", nargs="?", default="results/seed_results.jsonl")
+    p.set_defaults(fn=cmd_import)
     sub.add_parser("dashboard", help="launch Streamlit").set_defaults(fn=cmd_dashboard)
 
     p = sub.add_parser("serve", help="OpenAI-compatible routing endpoint")

@@ -110,3 +110,17 @@ def test_snapshot_and_gate_can_be_scoped_to_a_suite(env, capsys):
     assert main(["snapshot", "--suite", "scale-hard", "--out", str(env / "hard.json")]) == 0
     assert json.loads((env / "hard.json").read_text())["models"] == {}
     assert main(["gate", "--suite", "core", "--baseline", str(baseline)]) == 0
+
+
+def test_export_then_import_round_trips(env, tmp_path, capsys):
+    out = tmp_path / "seed.jsonl"
+    assert main(["export", "--out", str(out)]) == 0
+    lines = out.read_text().splitlines()
+    assert len(lines) == 24
+    fresh = tmp_path / "fresh.db"
+    assert main(["--db", str(fresh), "import", str(out)]) == 0
+    imported = ResultStore(fresh).rows()
+    original = ResultStore(env / "results.db").rows()
+    key = lambda r: (r.task_id, r.model_id, r.sample_idx)  # noqa: E731
+    assert sorted(map(key, imported)) == sorted(map(key, original))
+    assert "imported 24" in capsys.readouterr().out

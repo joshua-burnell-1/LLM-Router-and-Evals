@@ -70,3 +70,10 @@ def test_query_shows_routed_vs_flagship(env):
     assert labels.get("Routed model") == "mid"
     assert labels.get("Flagship baseline") == "big"
     assert any("reasoning" in i.value for i in at.info)
+
+
+def test_markdown_escape_stops_dollar_amounts_rendering_as_latex():
+    from routewise.dashboard import escape_markdown
+
+    text = "Winner a ($0.00020/query) over b ($0.00200/query)"
+    assert escape_markdown(text) == "Winner a (\\$0.00020/query) over b (\\$0.00200/query)"

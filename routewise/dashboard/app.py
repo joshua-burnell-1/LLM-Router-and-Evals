@@ -16,6 +16,7 @@ import pandas as pd
 import streamlit as st
 
 from routewise.config import default_db_path
+from routewise.dashboard import escape_markdown
 from routewise.evals.loader import all_tasks
 from routewise.evals.store import ResultStore
 from routewise.models.client import chat
@@ -119,7 +120,7 @@ if submitted and query.strip():
         c1, c2 = st.columns(2)
         c1.metric("Routed model", decision.model_id)
         c2.metric("Flagship baseline", baseline.model_id)
-        st.info(decision.rationale)
+        st.info(escape_markdown(decision.rationale))
 
         left, right = st.columns(2)
         with left:
@@ -177,12 +178,16 @@ if submitted and query.strip():
                 )
             out_l, out_r = st.columns(2)
             out_l.markdown(
-                f"**{result.model_id}** ({result.latency_s:.1f}s, ${result.cost_usd:.5f})"
+                escape_markdown(
+                    f"**{result.model_id}** ({result.latency_s:.1f}s, ${result.cost_usd:.5f})"
+                )
             )
             out_l.write(result.text)
             out_r.markdown(
-                f"**{flag_result.model_id}** ({flag_result.latency_s:.1f}s, "
-                f"${flag_result.cost_usd:.5f})"
+                escape_markdown(
+                    f"**{flag_result.model_id}** ({flag_result.latency_s:.1f}s, "
+                    f"${flag_result.cost_usd:.5f})"
+                )
             )
             out_r.write(flag_result.text)
 
@@ -190,14 +195,25 @@ if submitted and query.strip():
 
 st.subheader("Leaderboard: mean quality by category")
 records = pd.DataFrame(board.records())
+# Scores cluster near 1.0, so the colour scale starts just below the lowest observed value
+# (the legend shows the range); a fixed 0-1 scale would paint every cell the same blue.
+q_low = max(0.0, float(records["mean_quality"].min()) - 0.02)
+q_mid = (q_low + 1.0) / 2
 heat = (
     alt.Chart(records)
     .mark_rect()
     .encode(
-        x=alt.X("category:N", title=None, sort=board.categories() + [OVERALL]),
+        x=alt.X(
+            "category:N",
+            title=None,
+            sort=board.categories() + [OVERALL],
+            axis=alt.Axis(labelAngle=0, orient="top"),
+        ),
         y=alt.Y("model_id:N", title=None),
         color=alt.Color(
-            "mean_quality:Q", scale=alt.Scale(scheme="blues", domain=[0, 1]), title="quality"
+            "mean_quality:Q",
+            scale=alt.Scale(scheme="blues", domain=[q_low, 1]),
+            title="quality",
         ),
         tooltip=[
             "model_id",
@@ -210,12 +226,13 @@ heat = (
             alt.Tooltip("mean_latency_s:Q", format=".2f"),
         ],
     )
+    .properties(height=alt.Step(44))
 )
-labels = heat.mark_text(baseline="middle").encode(
+labels = heat.mark_text(baseline="middle", fontSize=13).encode(
     text=alt.Text("mean_quality:Q", format=".2f"),
-    color=alt.condition("datum.mean_quality > 0.6", alt.value("white"), alt.value("black")),
+    color=alt.condition(f"datum.mean_quality > {q_mid}", alt.value("white"), alt.value("black")),
 )
-st.altair_chart((heat + labels).properties(height=60 * max(1, len(models))), width="stretch")
+st.altair_chart(heat + labels, width="stretch")
 
 overall = records[records["category"] == OVERALL][
     [
@@ -252,7 +269,7 @@ else:
         alt.Chart(frame)
         .mark_bar()
         .encode(
-            x=alt.X("policy:N", title=None),
+            x=alt.X("policy:N", title=None, axis=alt.Axis(labelAngle=0)),
             y=alt.Y("total_cost_usd:Q", title="total cost over eval set ($)"),
             color=alt.Color("policy:N", legend=None),
             column=alt.Column("mode:N", title=None, sort=MODES),
