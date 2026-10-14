@@ -1,0 +1,28 @@
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Results and caches
+*.db
+*.db-journal
+*.sqlite
+data/results/
+.routewise_cache/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Tooling
+.superpowers/
+.DS_Store
+.streamlit/secrets.toml
