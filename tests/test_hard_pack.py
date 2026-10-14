@@ -1,0 +1,46 @@
+import contextlib
+import importlib.util
+import io
+import re
+from collections import Counter
+from pathlib import Path
+
+import yaml
+
+ROOT = Path(__file__).resolve().parents[1]
+spec = importlib.util.spec_from_file_location("gen", ROOT / "scripts" / "generate_hard_pack.py")
+gen = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(gen)
+
+PACK = ROOT / "data" / "tasks" / "hard_generated.yaml"
+
+
+def test_generator_is_deterministic():
+    assert gen.build() == gen.build()
+
+
+def test_committed_pack_matches_generator():
+    assert yaml.safe_load(PACK.read_text()) == gen.build()
+
+
+def test_pack_size_by_family():
+    tasks = gen.build()["tasks"]
+    families = Counter(t["id"].split("-")[1] for t in tasks)
+    assert families == {"code": 10, "date": 8, "logic": 6, "write": 6}
+
+
+def test_code_trace_gold_matches_real_execution():
+    for task in gen.build()["tasks"]:
+        if not task["id"].startswith("hard-code"):
+            continue
+        code = re.search(r"```python\n(.*?)```", task["prompt"], re.S).group(1)
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            exec(code, {})
+        expected = task["scoring"][0]["params"]["expected"]
+        assert buf.getvalue().strip() == str(expected), task["id"]
+
+
+def test_logic_puzzles_have_unique_solutions():
+    for puzzle in gen.logic_puzzles():
+        assert gen.count_solutions(puzzle["names"], puzzle["constraints"]) == 1

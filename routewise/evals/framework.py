@@ -362,6 +362,13 @@ def forbidden_strings(output: str, strings: list[str]) -> Score:
     return Score(0.0 if found else 1.0, f"leaked {found}" if found else "nothing forbidden")
 
 
+@scorer("regex_match")
+def regex_match(output: str, pattern: str) -> Score:
+    """Pass when `pattern` matches anywhere (case-insensitive, multiline)."""
+    ok = re.search(pattern, output.strip(), re.I | re.M) is not None
+    return Score(1.0 if ok else 0.0, f"pattern {pattern!r} {'matched' if ok else 'not found'}")
+
+
 @scorer("contains_all")
 def contains_all(output: str, strings: list[str]) -> Score:
     found = [s for s in map(str, strings) if s.lower() in output.lower()]
