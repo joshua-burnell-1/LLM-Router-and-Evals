@@ -197,7 +197,7 @@ def date_tasks(rng: random.Random) -> list[dict[str, Any]]:
 NAME_POOL = ["Ava", "Ben", "Cara", "Dev", "Eli", "Fay", "Gus", "Hana", "Ivo", "Juno"]
 
 
-def _check(kind: str, args: tuple, pos: dict[str, int]) -> bool:
+def _check(kind: str, args: tuple, pos: dict[str, int], n: int = 5) -> bool:
     if kind == "before":
         return pos[args[0]] < pos[args[1]]
     if kind == "immediately_before":
@@ -209,40 +209,44 @@ def _check(kind: str, args: tuple, pos: dict[str, int]) -> bool:
     if kind == "not_adjacent":
         return abs(pos[args[0]] - pos[args[1]]) != 1
     if kind == "at_an_end":
-        return pos[args[0]] in (1, 5)
+        return pos[args[0]] in (1, n)
     raise ValueError(kind)
 
 
-def _text(kind: str, args: tuple) -> str:
+def _text(kind: str, args: tuple, n: int = 5) -> str:
     return {
         "before": "{0} is somewhere in front of {1}.",
         "immediately_before": "{0} is directly in front of {1}.",
         "not_at": "{0} is not in position {1}.",
         "adjacent": "{0} and {1} stand next to each other.",
         "not_adjacent": "{0} and {1} do not stand next to each other.",
-        "at_an_end": "{0} is at one end of the line (position 1 or 5).",
+        "at_an_end": f"{{0}} is at one end of the line (position 1 or {n}).",
     }[kind].format(*args)
 
 
 def count_solutions(names: list[str], constraints: list[list]) -> int:
-    total = 0
+    total, n = 0, len(names)
     for perm in itertools.permutations(names):
         pos = {name: i + 1 for i, name in enumerate(perm)}
-        if all(_check(kind, tuple(args), pos) for kind, args in constraints):
+        if all(_check(kind, tuple(args), pos, n) for kind, args in constraints):
             total += 1
     return total
 
 
-def logic_puzzles() -> list[dict[str, Any]]:
+def logic_puzzles(n_people: int = 5, count: int = 6, seed_base: int = 1000) -> list[dict[str, Any]]:
     puzzles = []
-    for p in range(6):
-        rng = random.Random(1000 + p)
-        names = rng.sample(NAME_POOL, 5)
+    for p in range(count):
+        rng = random.Random(seed_base + p)
+        names = rng.sample(NAME_POOL, n_people)
         truth = names[:]
         rng.shuffle(truth)
         pos = {name: i + 1 for i, name in enumerate(truth)}
         constraints: list[list] = []
-        while count_solutions(names, constraints) > 1:
+        # Arrangements still consistent with every constraint so far.
+        remaining = [
+            {name: i + 1 for i, name in enumerate(perm)} for perm in itertools.permutations(names)
+        ]
+        while len(remaining) > 1:
             kind = rng.choice(
                 [
                     "before",
@@ -257,40 +261,48 @@ def logic_puzzles() -> list[dict[str, Any]]:
             )
             a, b = rng.sample(names, 2)
             args = (
-                (a, rng.randint(1, 5))
+                (a, rng.randint(1, n_people))
                 if kind == "not_at"
                 else (a,)
                 if kind == "at_an_end"
                 else (a, b)
             )
-            if not _check(kind, args, pos):
+            if not _check(kind, args, pos, n_people):
                 continue
-            before = count_solutions(names, constraints)
-            if count_solutions(names, constraints + [[kind, list(args)]]) < before:
+            kept = [cand for cand in remaining if _check(kind, args, cand, n_people)]
+            if len(kept) < len(remaining):
                 constraints.append([kind, list(args)])
+                remaining = kept
         puzzles.append({"names": names, "constraints": constraints, "truth": truth})
     return puzzles
 
 
-def logic_tasks() -> list[dict[str, Any]]:
+NUMBER_WORDS = {5: "Five", 6: "Six", 7: "Seven"}
+
+
+def logic_tasks(
+    n_people: int = 5, count: int = 6, seed_base: int = 1000, prefix: str = "hard-logic"
+) -> list[dict[str, Any]]:
     tasks = []
-    for i, puzzle in enumerate(logic_puzzles()):
+    example = ", ".join(f'"{k}": "..."' for k in range(1, n_people + 1))
+    word = NUMBER_WORDS[n_people]
+    for i, puzzle in enumerate(logic_puzzles(n_people, count, seed_base)):
         lines = "\n".join(
-            f"{k + 1}. {_text(kind, tuple(args))}"
+            f"{k + 1}. {_text(kind, tuple(args), n_people)}"
             for k, (kind, args) in enumerate(puzzle["constraints"])
         )
         answer = {str(k + 1): name for k, name in enumerate(puzzle["truth"])}
         tasks.append(
             {
-                "id": f"hard-logic-{i}",
+                "id": f"{prefix}-{i}",
                 "category": "reasoning",
-                "description": "Five-person ordering puzzle with a unique solution.",
+                "description": f"{word}-person ordering puzzle with a unique solution.",
                 "prompt": (
-                    f"Five people ({', '.join(sorted(puzzle['names']))}) stand in a line in "
-                    "positions 1 to 5, where 1 is the front. Exactly one arrangement satisfies "
-                    f"all of these constraints:\n{lines}\n"
+                    f"{word} people ({', '.join(sorted(puzzle['names']))}) stand in a line in "
+                    f"positions 1 to {n_people}, where 1 is the front. Exactly one arrangement "
+                    f"satisfies all of these constraints:\n{lines}\n"
                     "Think it through, then end with a JSON object mapping each position to a "
-                    'name, like {"1": "...", "2": "...", "3": "...", "4": "...", "5": "..."}.'
+                    f"name, like {{{example}}}."
                 ),
                 "scoring": [
                     {
@@ -381,9 +393,111 @@ def writing_tasks() -> list[dict[str, Any]]:
     return tasks
 
 
+# --- harder tier: long arithmetic, bigger puzzles, longer traces --------------------------------
+
+
+def mult_tasks() -> list[dict[str, Any]]:
+    rng = random.Random(3000)
+    tasks = []
+    for i in range(4):
+        a, b, c = rng.randint(1000, 9999), rng.randint(1000, 9999), rng.randint(10000, 99999)
+        answer = a * b - c
+        tasks.append(
+            {
+                "id": f"hard-mult-{i}",
+                "category": "reasoning",
+                "description": "Exact multi-digit arithmetic without tools.",
+                "prompt": (
+                    f"Without writing or running code, compute {a} * {b} - {c} exactly. Show "
+                    "your working, then the final line as 'ANSWER: <number>'."
+                ),
+                "scoring": [
+                    {
+                        "type": "exact_match",
+                        "params": {
+                            "extract": "regex",
+                            "pattern": r"ANSWER:\s*\$?([\d,]+)",
+                            "expected": answer,
+                        },
+                    }
+                ],
+                "reference_output": f"ANSWER: {answer:,}",
+            }
+        )
+    return tasks
+
+
+TRACE_TEMPLATES = [
+    # memoized recursion with a shared mutable default argument
+    """def f(n, memo={{}}):
+    if n in memo:
+        return memo[n]
+    if n < 3:
+        return n
+    memo[n] = f(n - 1) + 2 * f(n - 3) - (n % 4)
+    return memo[n]
+
+print(f({n}), f({m}) % {k}, len(f.__defaults__[0]))
+""",
+    # sorting with a compound key and a filtered aggregate
+    """words = {words}
+ranked = sorted(words, key=lambda w: (-len(set(w)), w[::-1]))
+print(ranked[:3], sum(len(w) for w in ranked if w[0] in "aeiou"))
+""",
+]
+
+TRACE_WORDS = [
+    "avocado", "embargo", "lattice", "oregano", "umbrella", "isotope",
+    "banana", "cascade", "origami", "tundra", "eclipse", "anagram",
+]  # fmt: skip
+
+
+def trace_tasks() -> list[dict[str, Any]]:
+    rng = random.Random(4000)
+    tasks = []
+    for t_idx, template in enumerate(TRACE_TEMPLATES):
+        for rep_idx in range(2):
+            params = {
+                "n": rng.randint(14, 20),
+                "m": rng.randint(9, 13),
+                "k": rng.randint(7, 13),
+                "words": rng.sample(TRACE_WORDS, 7),
+            }
+            code = template.format(**params)
+            output = run_snippet(code)
+            tasks.append(
+                {
+                    "id": f"hard-trace-{t_idx}{rep_idx}",
+                    "category": "reasoning",
+                    "description": "Trace a longer Python program and give its exact output.",
+                    "prompt": (
+                        "What does this Python program print? Reason step by step if you like, "
+                        "then give the final line as 'OUTPUT: <exactly what is printed>'.\n\n"
+                        f"```python\n{code}```"
+                    ),
+                    "scoring": [
+                        {
+                            "type": "exact_match",
+                            "params": {
+                                "extract": "regex",
+                                "pattern": r"OUTPUT:\s*`*([^`\n]+?)`*\s*$",
+                                "expected": output,
+                            },
+                        }
+                    ],
+                    "reference_output": f"OUTPUT: {output}",
+                }
+            )
+    return tasks
+
+
 def build() -> dict[str, Any]:
     rng = random.Random(42)
     tasks = code_tasks(rng) + date_tasks(rng) + logic_tasks() + writing_tasks()
+    # Harder tier, appended with independent seeds so the tasks above never change.
+    tasks += mult_tasks()
+    tasks += logic_tasks(n_people=7, count=4, seed_base=2000, prefix="hard-logic7")
+    tasks += trace_tasks()
     return {"suite": "scale-hard", "tags": ["generated", "hard"], "tasks": tasks}
 
 

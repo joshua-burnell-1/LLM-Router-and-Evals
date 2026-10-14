@@ -26,12 +26,20 @@ def test_committed_pack_matches_generator():
 def test_pack_size_by_family():
     tasks = gen.build()["tasks"]
     families = Counter(t["id"].split("-")[1] for t in tasks)
-    assert families == {"code": 10, "date": 8, "logic": 6, "write": 6}
+    assert families == {
+        "code": 10,
+        "date": 8,
+        "logic": 6,
+        "write": 6,
+        "mult": 4,
+        "logic7": 4,
+        "trace": 4,
+    }
 
 
 def test_code_trace_gold_matches_real_execution():
     for task in gen.build()["tasks"]:
-        if not task["id"].startswith("hard-code"):
+        if not task["id"].startswith(("hard-code", "hard-trace")):
             continue
         code = re.search(r"```python\n(.*?)```", task["prompt"], re.S).group(1)
         buf = io.StringIO()
@@ -44,3 +52,14 @@ def test_code_trace_gold_matches_real_execution():
 def test_logic_puzzles_have_unique_solutions():
     for puzzle in gen.logic_puzzles():
         assert gen.count_solutions(puzzle["names"], puzzle["constraints"]) == 1
+
+
+def test_seven_person_puzzles_have_unique_solutions():
+    for puzzle in gen.logic_puzzles(n_people=7, count=4, seed_base=2000):
+        assert len(puzzle["names"]) == 7
+        assert gen.count_solutions(puzzle["names"], puzzle["constraints"]) == 1
+
+
+def test_original_tasks_unchanged_by_new_families():
+    ids = [t["id"] for t in gen.build()["tasks"]]
+    assert ids[:30] == [t["id"] for t in yaml.safe_load(PACK.read_text())["tasks"]][:30]

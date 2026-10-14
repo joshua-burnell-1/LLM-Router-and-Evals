@@ -583,3 +583,276 @@ tasks:
       - platform
       - delayed
   reference_output: Umbrellas crowded the platform as the delayed train finally rolled into view slowly.
+- id: hard-mult-0
+  category: reasoning
+  description: Exact multi-digit arithmetic without tools.
+  prompt: 'Without writing or running code, compute 3078 * 6116 - 20918 exactly. Show your working, then
+    the final line as ''ANSWER: <number>''.'
+  scoring:
+  - type: exact_match
+    params:
+      extract: regex
+      pattern: ANSWER:\s*\$?([\d,]+)
+      expected: 18804130
+  reference_output: 'ANSWER: 18,804,130'
+- id: hard-mult-1
+  category: reasoning
+  description: Exact multi-digit arithmetic without tools.
+  prompt: 'Without writing or running code, compute 5597 * 6036 - 28453 exactly. Show your working, then
+    the final line as ''ANSWER: <number>''.'
+  scoring:
+  - type: exact_match
+    params:
+      extract: regex
+      pattern: ANSWER:\s*\$?([\d,]+)
+      expected: 33755039
+  reference_output: 'ANSWER: 33,755,039'
+- id: hard-mult-2
+  category: reasoning
+  description: Exact multi-digit arithmetic without tools.
+  prompt: 'Without writing or running code, compute 8252 * 5966 - 38908 exactly. Show your working, then
+    the final line as ''ANSWER: <number>''.'
+  scoring:
+  - type: exact_match
+    params:
+      extract: regex
+      pattern: ANSWER:\s*\$?([\d,]+)
+      expected: 49192524
+  reference_output: 'ANSWER: 49,192,524'
+- id: hard-mult-3
+  category: reasoning
+  description: Exact multi-digit arithmetic without tools.
+  prompt: 'Without writing or running code, compute 4010 * 9941 - 99009 exactly. Show your working, then
+    the final line as ''ANSWER: <number>''.'
+  scoring:
+  - type: exact_match
+    params:
+      extract: regex
+      pattern: ANSWER:\s*\$?([\d,]+)
+      expected: 39764401
+  reference_output: 'ANSWER: 39,764,401'
+- id: hard-logic7-0
+  category: reasoning
+  description: Seven-person ordering puzzle with a unique solution.
+  prompt: |-
+    Seven people (Ava, Ben, Cara, Eli, Gus, Hana, Juno) stand in a line in positions 1 to 7, where 1 is the front. Exactly one arrangement satisfies all of these constraints:
+    1. Ava is not in position 6.
+    2. Ben is not in position 5.
+    3. Juno is somewhere in front of Cara.
+    4. Ava is not in position 4.
+    5. Eli and Cara do not stand next to each other.
+    6. Hana is somewhere in front of Eli.
+    7. Ava is somewhere in front of Eli.
+    8. Hana is somewhere in front of Ava.
+    9. Juno is not in position 5.
+    10. Eli is not in position 5.
+    11. Gus is not in position 4.
+    12. Ben is somewhere in front of Gus.
+    13. Ben is not in position 1.
+    14. Eli is at one end of the line (position 1 or 7).
+    15. Hana is not in position 2.
+    16. Cara is somewhere in front of Ava.
+    17. Juno is not in position 2.
+    18. Hana is somewhere in front of Ben.
+    19. Hana is somewhere in front of Cara.
+    Think it through, then end with a JSON object mapping each position to a name, like {"1": "...", "2": "...", "3": "...", "4": "...", "5": "...", "6": "...", "7": "..."}.
+  scoring:
+  - type: exact_match
+    params:
+      extract: json_fields
+      partial: false
+      expected:
+        '1': Hana
+        '2': Ben
+        '3': Juno
+        '4': Cara
+        '5': Ava
+        '6': Gus
+        '7': Eli
+  reference_output: '{"1": "Hana", "2": "Ben", "3": "Juno", "4": "Cara", "5": "Ava", "6": "Gus", "7":
+    "Eli"}'
+- id: hard-logic7-1
+  category: reasoning
+  description: Seven-person ordering puzzle with a unique solution.
+  prompt: |-
+    Seven people (Ava, Eli, Fay, Gus, Hana, Ivo, Juno) stand in a line in positions 1 to 7, where 1 is the front. Exactly one arrangement satisfies all of these constraints:
+    1. Gus is somewhere in front of Hana.
+    2. Fay is somewhere in front of Hana.
+    3. Gus is somewhere in front of Eli.
+    4. Hana and Ivo stand next to each other.
+    5. Ava is not in position 7.
+    6. Gus is not in position 2.
+    7. Ivo and Gus do not stand next to each other.
+    8. Ivo is at one end of the line (position 1 or 7).
+    9. Juno is not in position 3.
+    10. Eli is not in position 2.
+    11. Ava is not in position 2.
+    12. Gus is somewhere in front of Juno.
+    13. Eli is somewhere in front of Juno.
+    14. Ava and Fay do not stand next to each other.
+    15. Eli is directly in front of Juno.
+    Think it through, then end with a JSON object mapping each position to a name, like {"1": "...", "2": "...", "3": "...", "4": "...", "5": "...", "6": "...", "7": "..."}.
+  scoring:
+  - type: exact_match
+    params:
+      extract: json_fields
+      partial: false
+      expected:
+        '1': Gus
+        '2': Fay
+        '3': Eli
+        '4': Juno
+        '5': Ava
+        '6': Hana
+        '7': Ivo
+  reference_output: '{"1": "Gus", "2": "Fay", "3": "Eli", "4": "Juno", "5": "Ava", "6": "Hana", "7": "Ivo"}'
+- id: hard-logic7-2
+  category: reasoning
+  description: Seven-person ordering puzzle with a unique solution.
+  prompt: |-
+    Seven people (Ava, Eli, Fay, Gus, Hana, Ivo, Juno) stand in a line in positions 1 to 7, where 1 is the front. Exactly one arrangement satisfies all of these constraints:
+    1. Ava and Juno do not stand next to each other.
+    2. Ivo is somewhere in front of Hana.
+    3. Juno is somewhere in front of Fay.
+    4. Eli is somewhere in front of Ava.
+    5. Hana is not in position 3.
+    6. Eli is at one end of the line (position 1 or 7).
+    7. Hana is not in position 7.
+    8. Fay is at one end of the line (position 1 or 7).
+    9. Gus is somewhere in front of Juno.
+    10. Ivo is not in position 5.
+    11. Ivo and Juno do not stand next to each other.
+    12. Ivo is somewhere in front of Ava.
+    13. Ava is somewhere in front of Hana.
+    14. Hana is not in position 6.
+    15. Ava and Gus stand next to each other.
+    16. Gus is not in position 4.
+    Think it through, then end with a JSON object mapping each position to a name, like {"1": "...", "2": "...", "3": "...", "4": "...", "5": "...", "6": "...", "7": "..."}.
+  scoring:
+  - type: exact_match
+    params:
+      extract: json_fields
+      partial: false
+      expected:
+        '1': Eli
+        '2': Ivo
+        '3': Gus
+        '4': Ava
+        '5': Hana
+        '6': Juno
+        '7': Fay
+  reference_output: '{"1": "Eli", "2": "Ivo", "3": "Gus", "4": "Ava", "5": "Hana", "6": "Juno", "7": "Fay"}'
+- id: hard-logic7-3
+  category: reasoning
+  description: Seven-person ordering puzzle with a unique solution.
+  prompt: |-
+    Seven people (Ava, Ben, Cara, Dev, Gus, Hana, Ivo) stand in a line in positions 1 to 7, where 1 is the front. Exactly one arrangement satisfies all of these constraints:
+    1. Gus is somewhere in front of Ivo.
+    2. Hana is at one end of the line (position 1 or 7).
+    3. Gus is directly in front of Dev.
+    4. Ben is somewhere in front of Dev.
+    5. Cara and Ben do not stand next to each other.
+    6. Ivo and Cara do not stand next to each other.
+    7. Cara and Hana do not stand next to each other.
+    8. Ben is directly in front of Gus.
+    9. Ava is not in position 6.
+    10. Ben and Ava stand next to each other.
+    Think it through, then end with a JSON object mapping each position to a name, like {"1": "...", "2": "...", "3": "...", "4": "...", "5": "...", "6": "...", "7": "..."}.
+  scoring:
+  - type: exact_match
+    params:
+      extract: json_fields
+      partial: false
+      expected:
+        '1': Cara
+        '2': Ava
+        '3': Ben
+        '4': Gus
+        '5': Dev
+        '6': Ivo
+        '7': Hana
+  reference_output: '{"1": "Cara", "2": "Ava", "3": "Ben", "4": "Gus", "5": "Dev", "6": "Ivo", "7": "Hana"}'
+- id: hard-trace-00
+  category: reasoning
+  description: Trace a longer Python program and give its exact output.
+  prompt: |-
+    What does this Python program print? Reason step by step if you like, then give the final line as 'OUTPUT: <exactly what is printed>'.
+
+    ```python
+    def f(n, memo={}):
+        if n in memo:
+            return memo[n]
+        if n < 3:
+            return n
+        memo[n] = f(n - 1) + 2 * f(n - 3) - (n % 4)
+        return memo[n]
+
+    print(f(17), f(12) % 10, len(f.__defaults__[0]))
+    ```
+  scoring:
+  - type: exact_match
+    params:
+      extract: regex
+      pattern: OUTPUT:\s*`*([^`\n]+?)`*\s*$
+      expected: 258 5 15
+  reference_output: 'OUTPUT: 258 5 15'
+- id: hard-trace-01
+  category: reasoning
+  description: Trace a longer Python program and give its exact output.
+  prompt: |-
+    What does this Python program print? Reason step by step if you like, then give the final line as 'OUTPUT: <exactly what is printed>'.
+
+    ```python
+    def f(n, memo={}):
+        if n in memo:
+            return memo[n]
+        if n < 3:
+            return n
+        memo[n] = f(n - 1) + 2 * f(n - 3) - (n % 4)
+        return memo[n]
+
+    print(f(14), f(11) % 9, len(f.__defaults__[0]))
+    ```
+  scoring:
+  - type: exact_match
+    params:
+      extract: regex
+      pattern: OUTPUT:\s*`*([^`\n]+?)`*\s*$
+      expected: 52 4 12
+  reference_output: 'OUTPUT: 52 4 12'
+- id: hard-trace-10
+  category: reasoning
+  description: Trace a longer Python program and give its exact output.
+  prompt: |-
+    What does this Python program print? Reason step by step if you like, then give the final line as 'OUTPUT: <exactly what is printed>'.
+
+    ```python
+    words = ['lattice', 'embargo', 'oregano', 'banana', 'isotope', 'tundra', 'anagram']
+    ranked = sorted(words, key=lambda w: (-len(set(w)), w[::-1]))
+    print(ranked[:3], sum(len(w) for w in ranked if w[0] in "aeiou"))
+    ```
+  scoring:
+  - type: exact_match
+    params:
+      extract: regex
+      pattern: OUTPUT:\s*`*([^`\n]+?)`*\s*$
+      expected: '[''embargo'', ''tundra'', ''lattice''] 28'
+  reference_output: 'OUTPUT: [''embargo'', ''tundra'', ''lattice''] 28'
+- id: hard-trace-11
+  category: reasoning
+  description: Trace a longer Python program and give its exact output.
+  prompt: |-
+    What does this Python program print? Reason step by step if you like, then give the final line as 'OUTPUT: <exactly what is printed>'.
+
+    ```python
+    words = ['embargo', 'isotope', 'umbrella', 'origami', 'eclipse', 'anagram', 'tundra']
+    ranked = sorted(words, key=lambda w: (-len(set(w)), w[::-1]))
+    print(ranked[:3], sum(len(w) for w in ranked if w[0] in "aeiou"))
+    ```
+  scoring:
+  - type: exact_match
+    params:
+      extract: regex
+      pattern: OUTPUT:\s*`*([^`\n]+?)`*\s*$
+      expected: '[''umbrella'', ''embargo'', ''tundra''] 43'
+  reference_output: 'OUTPUT: [''umbrella'', ''embargo'', ''tundra''] 43'
