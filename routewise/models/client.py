@@ -20,7 +20,7 @@ import tempfile
 import time
 from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass, replace
-from typing import Any, Protocol, TypeVar
+from typing import Any, Protocol
 
 from routewise.models.cache import ResponseCache
 from routewise.models.registry import (
@@ -32,7 +32,6 @@ from routewise.models.registry import (
 )
 
 Message = dict[str, str]
-T = TypeVar("T")
 
 DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant."
 
@@ -95,7 +94,7 @@ def is_retryable(exc: BaseException) -> bool:
     return any(cls.__name__ in _RETRYABLE_NAMES for cls in type(exc).__mro__)
 
 
-async def retry_async(
+async def retry_async[T](
     fn: Callable[[], Awaitable[T]],
     *,
     attempts: int = 4,
@@ -169,12 +168,17 @@ class ClaudeCodeBackend:
 
     def build_args(self, spec: ModelSpec, system: str | None) -> list[str]:
         return [
-            self.executable, "-p",
-            "--model", spec.cli_model or spec.id,
-            "--output-format", "json",
-            "--tools", "",
+            self.executable,
+            "-p",
+            "--model",
+            spec.cli_model or spec.id,
+            "--output-format",
+            "json",
+            "--tools",
+            "",
             "--no-session-persistence",
-            "--system-prompt", system or DEFAULT_SYSTEM_PROMPT,
+            "--system-prompt",
+            system or DEFAULT_SYSTEM_PROMPT,
         ]
 
     @staticmethod
@@ -226,7 +230,9 @@ class MockBackend:
     """Deterministic backend. `responder(spec, messages)` returns text or raises."""
 
     def __init__(self, responder: Callable[[ModelSpec, list[Message]], str] | None = None):
-        self.responder = responder or (lambda spec, messages: f"[{spec.id}] {messages[-1]['content']}")
+        self.responder = responder or (
+            lambda spec, messages: f"[{spec.id}] {messages[-1]['content']}"
+        )
 
     async def complete(
         self, spec: ModelSpec, messages: list[Message], *, max_tokens: int

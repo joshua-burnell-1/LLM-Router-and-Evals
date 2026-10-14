@@ -18,8 +18,12 @@ from routewise.models.client import (
 from routewise.models.registry import ModelSpec
 
 SPEC = ModelSpec(
-    id="m", provider="mock", cli_model="haiku", litellm_model="anthropic/m",
-    input_price=1.0, output_price=10.0,
+    id="m",
+    provider="mock",
+    cli_model="haiku",
+    litellm_model="anthropic/m",
+    input_price=1.0,
+    output_price=10.0,
 )
 REGISTRY = {"m": SPEC}
 
@@ -77,7 +81,9 @@ async def test_retry_delay_is_capped():
 
     sleep = Sleeper()
     with pytest.raises(TransientError):
-        await retry_async(always_fails, attempts=5, base_delay=4, max_delay=10, jitter=0, sleep=sleep)
+        await retry_async(
+            always_fails, attempts=5, base_delay=4, max_delay=10, jitter=0, sleep=sleep
+        )
     assert sleep.delays == [4, 8, 10, 10]
 
 
@@ -110,7 +116,9 @@ def test_render_multi_turn_is_transcript_with_system_split_out():
 async def test_chat_with_mock_backend_prices_the_call():
     backend = MockBackend(lambda spec, messages: "x" * 400)
     result = await chat(
-        "m", [{"role": "user", "content": "y" * 4000}], registry=REGISTRY,
+        "m",
+        [{"role": "user", "content": "y" * 4000}],
+        registry=REGISTRY,
         backends={"mock": backend},
     )
     assert result.text == "x" * 400
@@ -131,8 +139,11 @@ async def test_chat_retries_transient_backend_errors():
         return "fine"
 
     result = await chat(
-        "m", [{"role": "user", "content": "q"}], registry=REGISTRY,
-        backends={"mock": MockBackend(responder)}, retry_sleep=Sleeper(),
+        "m",
+        [{"role": "user", "content": "q"}],
+        registry=REGISTRY,
+        backends={"mock": MockBackend(responder)},
+        retry_sleep=Sleeper(),
     )
     assert result.text == "fine"
     assert attempts["n"] == 2
@@ -156,7 +167,10 @@ async def test_chat_uses_cache(tmp_path):
 
 def _cli_json(**overrides):
     payload = {
-        "type": "result", "is_error": False, "result": "51", "duration_api_ms": 1500,
+        "type": "result",
+        "is_error": False,
+        "result": "51",
+        "duration_api_ms": 1500,
         "usage": {"input_tokens": 2, "cache_creation_input_tokens": 2500, "output_tokens": 149},
     }
     payload.update(overrides)
