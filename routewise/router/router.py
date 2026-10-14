@@ -1,6 +1,6 @@
 """Eval-gated routing: pick the model with the best measured trade-off for the query.
 
-score = quality_weight * quality - cost_weight * normalized_cost - latency_weight * normalized_latency
+    score = w_quality * quality - w_cost * norm_cost - w_latency * norm_latency
 
 Quality, cost and latency are per-category means from the leaderboard; cost and latency are
 normalized by the most expensive / slowest candidate. A mode may also refuse models whose
