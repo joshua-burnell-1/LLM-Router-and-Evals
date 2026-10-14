@@ -203,3 +203,18 @@ def test_replay_classifier_is_leave_one_out(synthetic_registry):
     predicted = {t["task_id"]: t["predicted_category"] for t in summary.per_task}
     assert predicted == {"twin-a": "reasoning", "twin-b": "safety"}
     assert summary.classifier_accuracy == 0.0
+
+
+def test_gate_fails_when_baseline_cells_are_missing():
+    baseline = snapshot(Leaderboard.from_rows(synthetic_rows()))
+    rows = [r for r in synthetic_rows() if r.model_id != "small"]
+    result = gate(Leaderboard.from_rows(rows), baseline, threshold=0.05)
+    assert not result.passed
+    assert ("small", "reasoning") in result.missing
+    assert "missing" in result.summary()
+    assert gate(Leaderboard.from_rows(rows), baseline, threshold=0.05, allow_missing=True).passed
+
+
+def test_gate_with_nothing_checked_fails():
+    baseline = snapshot(Leaderboard.from_rows(synthetic_rows()))
+    assert not gate(Leaderboard.from_rows([]), baseline).passed

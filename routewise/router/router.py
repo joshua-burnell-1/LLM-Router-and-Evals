@@ -89,18 +89,27 @@ class RouteDecision:
 
 
 def _why(winner: Candidate, runner: Candidate) -> str:
+    """One clause explaining why `winner` outranked `runner`, from the actual numbers."""
     dq = winner.quality - runner.quality
-    if runner.mean_cost_usd > 0 and winner.mean_cost_usd > 0:
+    if runner.mean_cost_usd > 0:
         ratio = winner.mean_cost_usd / runner.mean_cost_usd
     else:
-        ratio = 1.0
-    if dq >= 0 and ratio <= 1:
-        return f"it scores {dq:+.2f} quality at {ratio:.0%} of the cost"
+        ratio = 1.0 if winner.mean_cost_usd == 0 else float("inf")
+    cost = f"{ratio:.0%} of the cost" if ratio <= 1 else f"{ratio:.1f}x the cost"
+    if dq > 0 and ratio <= 1:
+        return f"it scores {dq:+.2f} quality at {cost}"
+    if dq == 0 and ratio < 1:
+        return f"it matches quality at {cost}"
     if dq < 0 and ratio < 1:
-        return f"it gives up only {-dq:.2f} quality for {ratio:.0%} of the cost"
+        return f"it gives up only {-dq:.2f} quality for {cost}"
     if dq > 0:
-        return f"its {dq:+.2f} quality gain is worth {ratio:.1f}x the cost in this mode"
-    return "it is faster at similar quality and cost"
+        return f"its {dq:+.2f} quality gain is worth {cost} in this mode"
+    faster = (
+        f"it is faster ({winner.mean_latency_s:.1f}s vs {runner.mean_latency_s:.1f}s)"
+        if winner.mean_latency_s < runner.mean_latency_s
+        else "it scores higher on the mode's weights"
+    )
+    return faster + (f" at {cost}" if ratio != 1 else "")
 
 
 class Router:
@@ -208,6 +217,7 @@ class Router:
             use_llm=self.config.llm_fallback,
             llm_model=self.config.llm_model,
             chat_fn=chat_fn,
+            index=self.examples,
         )
         return self._decide(classification, mode or self.config.default_mode, category)
 
@@ -219,13 +229,16 @@ class Router:
         candidates: list[Candidate],
         classification: Classification,
     ) -> str:
-        how = (
-            f"rules matched {', '.join(repr(m) for m in classification.matched[:3])}"
-            if classification.matched
-            else classification.method
-        )
+        shown = ", ".join(classification.matched[:3])
+        how = {
+            "knn": f"nearest eval examples: {shown}",
+            "rules": "rules matched " + ", ".join(repr(m) for m in classification.matched[:3]),
+            "llm": "classified by an LLM",
+        }.get(classification.method, "no rule or example matched")
         parts = [f"Category: {category} ({how})."]
-        if used != category:
+        if category == GENERAL:
+            parts.append("No category matched, so overall scores were used.")
+        elif used != category:
             parts.append("Too little per-category data, so overall scores were used.")
         winner = candidates[0]
         parts.append(
@@ -238,8 +251,11 @@ class Router:
             parts.append(
                 f"over {runner.model_id} (score {runner.score:.2f}: quality {runner.quality:.2f}, "
                 f"${runner.mean_cost_usd:.5f}/query, {runner.mean_latency_s:.1f}s)"
-                + (f", which was excluded: {runner.excluded_reason}" if not runner.eligible else "")
-                + f": {_why(winner, runner)}."
+                + (
+                    f", which was excluded: {runner.excluded_reason}."
+                    if not runner.eligible
+                    else f": {_why(winner, runner)}."
+                )
             )
         else:
             parts.append("as the only model with data.")
@@ -257,6 +273,9 @@ class Router:
         model = self.flagship_model()
         candidates, used = self.rank(classification.category, "quality")
         chosen = [c for c in candidates if c.model_id == model]
+        if not chosen:  # flagship lacks data in this category: describe it by overall stats
+            overall, _ = self.rank(OVERALL, "quality")
+            chosen = [c for c in overall if c.model_id == model]
         return RouteDecision(
             model_id=model,
             mode="flagship",

@@ -55,6 +55,11 @@ def load_models(
         unknown = set(entry) - known
         if unknown:
             raise ValueError(f"unknown keys for model {entry.get('id')}: {sorted(unknown)}")
+        if not isinstance(entry.get("id"), str):
+            raise ValueError(
+                f"model id {entry.get('id')!r} must be a string; quote it in YAML "
+                "(bare on/off/yes/no parse as booleans)"
+            )
         spec = ModelSpec(**entry)
         if spec.id in models:
             raise ValueError(f"duplicate model id: {spec.id}")

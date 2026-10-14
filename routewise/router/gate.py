@@ -53,11 +53,19 @@ class GateResult:
     passed: bool
     checked: int
     regressions: list[Regression] = field(default_factory=list)
+    missing: list[tuple[str, str]] = field(default_factory=list)
 
     def summary(self) -> str:
         if self.passed:
-            return f"gate passed: {self.checked} (model, category) cells within threshold"
-        lines = [f"gate FAILED: {len(self.regressions)} regression(s)"]
+            note = f"; {len(self.missing)} baseline cells missing (allowed)" if self.missing else ""
+            return f"gate passed: {self.checked} (model, category) cells within threshold{note}"
+        lines = [
+            f"gate FAILED: {len(self.regressions)} regression(s), "
+            f"{len(self.missing)} baseline cell(s) missing or under-sampled, "
+            f"{self.checked} checked"
+        ]
+        for model, category in self.missing:
+            lines.append(f"  missing: {model} / {category}")
         for r in self.regressions:
             lines.append(
                 f"  {r.model_id} / {r.category}: {r.baseline:.3f} -> {r.current:.3f} "
@@ -67,16 +75,25 @@ class GateResult:
 
 
 def gate(
-    board: Leaderboard, baseline: dict[str, Any], *, threshold: float = 0.05, min_n: int = 1
+    board: Leaderboard,
+    baseline: dict[str, Any],
+    *,
+    threshold: float = 0.05,
+    min_n: int = 1,
+    allow_missing: bool = False,
 ) -> GateResult:
-    regressions, checked = [], 0
+    """Fail on a regression, on a baseline cell with no (or too few) current results, and on
+    checking nothing at all. `allow_missing` tolerates missing cells, never an empty check."""
+    regressions, missing, checked = [], [], 0
     for model, cats in baseline.get("models", {}).items():
         for category, base in cats.items():
             cell = board.get(model, category)
             if cell is None or cell.n < min_n:
+                missing.append((model, category))
                 continue
             checked += 1
             reg = Regression(model, category, base["mean_quality"], cell.mean_quality)
             if reg.drop > threshold:
                 regressions.append(reg)
-    return GateResult(not regressions, checked, regressions)
+    passed = not regressions and checked > 0 and (allow_missing or not missing)
+    return GateResult(passed, checked, regressions, missing)

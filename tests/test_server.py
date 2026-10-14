@@ -80,3 +80,56 @@ def test_models_endpoint_lists_modes_and_models(setup):
 def test_health(setup):
     client, _ = setup
     assert client.get("/health").json() == {"status": "ok"}
+
+
+def test_empty_messages_rejected(setup):
+    client, _ = setup
+    r = client.post("/v1/chat/completions", json={"model": "routewise", "messages": []})
+    assert r.status_code == 422
+
+
+def test_non_positive_max_tokens_rejected(setup):
+    client, _ = setup
+    for bad in (0, -5):
+        r = client.post("/v1/chat/completions", json=body("routewise", max_tokens=bad))
+        assert r.status_code == 422
+
+
+def test_content_parts_are_joined(setup):
+    client, chat = setup
+    payload = {
+        "model": "small",
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": "Calculate"},
+                    {"type": "text", "text": "how many"},
+                ],
+            }
+        ],
+    }
+    r = client.post("/v1/chat/completions", json=payload)
+    assert r.status_code == 200
+    assert chat.calls[-1][1] == "Calculate\nhow many"
+
+
+def test_backend_failure_is_502(synthetic_registry):
+    chat = FakeChat(fail={"big": 9, "mid": 9, "small": 9})
+    router = Router(Leaderboard.from_rows(synthetic_rows()), CONFIG, synthetic_registry)
+    client = TestClient(create_app(router=router, chat_fn=chat, registry=synthetic_registry))
+    assert client.post("/v1/chat/completions", json=body("routewise/balanced")).status_code == 502
+    assert client.post("/v1/chat/completions", json=body("small")).status_code == 502
+
+
+def test_disabled_model_is_404(tmp_path):
+    from routewise.models.registry import load_models
+
+    path = tmp_path / "m.yaml"
+    path.write_text(
+        "models:\n  - {id: parked, provider: mock, input_price: 1, output_price: 1, "
+        "enabled: false}\n"
+    )
+    registry = load_models(path, include_disabled=True)
+    client = TestClient(create_app(router=None, chat_fn=FakeChat(), registry=registry))
+    assert client.post("/v1/chat/completions", json=body("parked")).status_code == 404

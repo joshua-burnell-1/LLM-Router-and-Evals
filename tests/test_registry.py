@@ -117,3 +117,10 @@ def test_repo_models_yaml_loads_and_prices_are_positive():
     assert {"claude-haiku-5-5", "claude-sonnet-5-5", "claude-opus-5-5"} <= set(models)
     for spec in models.values():
         assert spec.input_price > 0 and spec.output_price > 0, spec.id
+
+
+def test_non_string_model_id_is_rejected(tmp_path):
+    path = tmp_path / "models.yaml"
+    path.write_text("models:\n  - {id: off, provider: mock, input_price: 1, output_price: 1}\n")
+    with pytest.raises(ValueError, match="quote it"):
+        load_models(path)

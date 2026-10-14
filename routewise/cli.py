@@ -172,7 +172,11 @@ def cmd_gate(args: argparse.Namespace) -> int:
 
     ctx = Context(args.db, _suites(args))
     result = gate(
-        ctx.board, load_snapshot(args.baseline), threshold=args.threshold, min_n=args.min_n
+        ctx.board,
+        load_snapshot(args.baseline),
+        threshold=args.threshold,
+        min_n=args.min_n,
+        allow_missing=args.allow_missing,
     )
     print(result.summary())
     return 0 if result.passed else 1
@@ -272,6 +276,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--threshold", type=float, default=0.05)
     p.add_argument("--min-n", type=int, default=2)
     p.add_argument("--suite", help="limit to suites; must match the baseline's scope")
+    p.add_argument(
+        "--allow-missing",
+        action="store_true",
+        help="do not fail on baseline cells that have no current results",
+    )
     p.set_defaults(fn=cmd_gate)
 
     sub.add_parser("rescore", help="rerun scorers on stored outputs").set_defaults(fn=cmd_rescore)

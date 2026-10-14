@@ -5,9 +5,11 @@
 Families (all deterministic from fixed seeds):
 - code: "what does this program print?" Gold comes from actually running the snippet.
 - date: calendar arithmetic. Gold comes from the datetime module.
-- logic: 5-person ordering puzzles. Constraints are added until brute force finds exactly one
-  solution, so the gold answer is provably unique.
+- logic, logic7: five- and seven-person ordering puzzles. Constraints are added until brute
+  force finds exactly one solution, so the gold answer is provably unique.
 - write: constrained writing (exact word count, first word, required words).
+- mult: exact 4-digit multiplication chains. trace: longer programs (shared mutable default,
+  compound sort keys). Program-output tasks are scored exactly (case and format matter).
 """
 
 from __future__ import annotations
@@ -109,6 +111,7 @@ def code_tasks(rng: random.Random) -> list[dict[str, Any]]:
                                 "extract": "regex",
                                 "pattern": r"OUTPUT:\s*`*([^`\n]+?)`*\s*$",
                                 "expected": output,
+                                "exact": True,
                             },
                         }
                     ],
@@ -482,6 +485,7 @@ def trace_tasks() -> list[dict[str, Any]]:
                                 "extract": "regex",
                                 "pattern": r"OUTPUT:\s*`*([^`\n]+?)`*\s*$",
                                 "expected": output,
+                                "exact": True,
                             },
                         }
                     ],

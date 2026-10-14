@@ -22,22 +22,33 @@ from collections.abc import Awaitable, Callable, Mapping
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Response
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from routewise.models.client import ChatResult, chat
 from routewise.models.registry import ModelSpec, load_models
 from routewise.router.router import NoDataError, Router, default_router
 
 
+class ContentPart(BaseModel):
+    type: str = "text"
+    text: str = ""
+
+
 class ChatMessage(BaseModel):
     role: str
-    content: str
+    # OpenAI clients send either a string or a list of content parts; text parts are joined.
+    content: str | list[ContentPart]
+
+    def text(self) -> str:
+        if isinstance(self.content, str):
+            return self.content
+        return "\n".join(p.text for p in self.content if p.type == "text")
 
 
 class ChatRequest(BaseModel):
     model: str
-    messages: list[ChatMessage]
-    max_tokens: int | None = None
+    messages: list[ChatMessage] = Field(min_length=1)
+    max_tokens: int | None = Field(default=None, ge=1)
     stream: bool = False
 
 
@@ -97,7 +108,7 @@ def create_app(
     async def completions(req: ChatRequest, response: Response) -> dict[str, Any]:
         if req.stream:
             raise HTTPException(400, "streaming is not supported yet; set stream=false")
-        messages = [m.model_dump() for m in req.messages]
+        messages = [{"role": m.role, "content": m.text()} for m in req.messages]
         max_tokens = req.max_tokens or 1024
 
         if req.model == "routewise" or req.model.startswith("routewise/"):
@@ -113,6 +124,8 @@ def create_app(
                 )
             except NoDataError as exc:
                 raise HTTPException(503, str(exc)) from exc
+            except Exception as exc:  # every candidate failed upstream
+                raise HTTPException(502, f"upstream model error: {exc}") from exc
             response.headers["x-routewise-model"] = result.model_id
             response.headers["x-routewise-category"] = decision.category
             return _completion(
@@ -128,9 +141,13 @@ def create_app(
                 },
             )
 
-        if req.model not in registry:
-            raise HTTPException(404, f"unknown model {req.model!r}")
-        result = await chat_fn(req.model, messages, max_tokens=max_tokens)
+        spec = registry.get(req.model)
+        if spec is None or not spec.enabled:
+            raise HTTPException(404, f"unknown or disabled model {req.model!r}")
+        try:
+            result = await chat_fn(req.model, messages, max_tokens=max_tokens)
+        except Exception as exc:
+            raise HTTPException(502, f"upstream model error: {type(exc).__name__}: {exc}") from exc
         return _completion(result)
 
     return app

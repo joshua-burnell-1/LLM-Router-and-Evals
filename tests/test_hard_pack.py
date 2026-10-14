@@ -63,3 +63,9 @@ def test_seven_person_puzzles_have_unique_solutions():
 def test_original_tasks_unchanged_by_new_families():
     ids = [t["id"] for t in gen.build()["tasks"]]
     assert ids[:30] == [t["id"] for t in yaml.safe_load(PACK.read_text())["tasks"]][:30]
+
+
+def test_program_output_tasks_compare_exactly():
+    for task in gen.build()["tasks"]:
+        if task["id"].startswith(("hard-code", "hard-trace")):
+            assert task["scoring"][0]["params"]["exact"] is True, task["id"]

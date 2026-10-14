@@ -141,3 +141,42 @@ async def test_quota_exhaustion_stops_the_run(store):
     assert summary.stopped_for_quota
     assert len(chat.calls) == 1
     assert summary.n_errors == 1
+
+
+async def test_no_judge_skips_tasks_that_need_a_judge(store):
+    from routewise.evals.framework import EvalTask, ScorerSpec
+
+    judged = EvalTask(
+        id="judged",
+        category="reasoning",
+        prompt="p",
+        scoring=[
+            ScorerSpec("contains_all", {"strings": ["4"]}),
+            ScorerSpec("llm_judge", {"rubric": "5: a\n3: b\n1: c"}),
+        ],
+    )
+    chat = FakeChat()
+    summary = await run_eval(
+        [judged, make_task("t1")], ["m"], store, judge=None, chat_fn=chat, progress=lambda _: None
+    )
+    assert summary.n_needs_judge == 1
+    assert len(chat.calls) == 1
+    assert [r.task_id for r in store.rows(include_errors=True)] == ["t1"]
+
+
+def test_error_row_never_replaces_a_successful_row(store):
+    from routewise.evals.store import ResultRow
+
+    key = dict(task_id="t", task_version="v", model_id="m", created_at="x")
+    store.record(ResultRow(**key, quality=1.0, output="good"))
+    store.record(ResultRow(**key, error="RuntimeError: blip"))
+    [row] = store.rows(include_errors=True)
+    assert row.quality == 1.0 and row.error is None
+
+
+def test_cli_exits_3_when_stopped_by_budget(tmp_path, monkeypatch):
+    models = tmp_path / "models.yaml"
+    models.write_text("models:\n  - {id: m1, provider: mock, input_price: 1, output_price: 2}\n")
+    monkeypatch.setenv("ROUTEWISE_MODELS_CONFIG", str(models))
+    code = main(["--limit", "2", "--db", str(tmp_path / "r.db"), "--no-judge", "--max-cost", "0"])
+    assert code == 3

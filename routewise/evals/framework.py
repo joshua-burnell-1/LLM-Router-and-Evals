@@ -148,6 +148,11 @@ def values_match(gold: Any, pred: Any) -> bool:
         return normalize_text(gold) == normalize_text(pred)
 
 
+def _literal_match(expected: Any, got: str) -> bool:
+    options = expected if isinstance(expected, list) else [expected]
+    return any(str(o).strip() == str(got).strip() for o in options)
+
+
 def _flatten(obj: dict[str, Any], prefix: str = "") -> dict[str, Any]:
     flat: dict[str, Any] = {}
     for key, value in obj.items():
@@ -194,10 +199,13 @@ def exact_match(
     pattern: str | None = None,
     fields: list[str] | None = None,
     partial: bool = True,
+    exact: bool = False,
 ) -> Score:
     """Exact answer check. `extract`: text | number | regex | json_fields.
 
     json_fields gives partial credit per field unless `partial=False` (all or nothing).
+    `exact=True` compares regex/text answers literally (case and number format matter), for
+    tasks like "what does this program print".
     """
     if extract == "json_fields":
         try:
@@ -228,10 +236,10 @@ def exact_match(
         if not m:
             return Score(0.0, f"pattern {pattern!r} not found")
         got = m.group(1) if m.groups() else m.group(0)
-        ok = values_match(expected, got)
+        ok = _literal_match(expected, got) if exact else values_match(expected, got)
         return Score(1.0 if ok else 0.0, f"got {got!r}, expected {expected!r}")
     if extract == "text":
-        ok = values_match(expected, output)
+        ok = _literal_match(expected, output) if exact else values_match(expected, output)
         return Score(1.0 if ok else 0.0, f"got {output.strip()[:60]!r}, expected {expected!r}")
     raise ValueError(f"unknown extract mode {extract!r}")
 

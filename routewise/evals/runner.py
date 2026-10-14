@@ -39,6 +39,7 @@ class RunSummary:
     judge_cost_usd: float = 0.0
     stopped_for_budget: bool = False
     stopped_for_quota: bool = False
+    n_needs_judge: int = 0
 
 
 async def run_eval(
@@ -58,6 +59,10 @@ async def run_eval(
     summary = RunSummary(run_id=store.start_run(run_args or {}))
     jobs = []
     for task in tasks:
+        if judge is None and any(s.type == "llm_judge" for s in task.scoring):
+            # Scoring without the judge would store a partial score as if it were complete.
+            summary.n_needs_judge += 1
+            continue
         for model_id in model_ids:
             for sample in range(repeats):
                 if not force and store.has(task.id, task.version, model_id, sample):
@@ -225,8 +230,15 @@ def main(argv: Iterable[str] | None = None) -> int:
             if summary.stopped_for_quota
             else ""
         )
+        + (
+            f" [{summary.n_needs_judge} judged tasks skipped by --no-judge]"
+            if summary.n_needs_judge
+            else ""
+        )
     )
-    return 1 if summary.n_errors else 0
+    if summary.n_errors:
+        return 1
+    return 3 if summary.stopped_for_budget or summary.stopped_for_quota else 0
 
 
 if __name__ == "__main__":

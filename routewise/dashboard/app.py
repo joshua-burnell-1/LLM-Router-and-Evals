@@ -116,7 +116,7 @@ if submitted and query.strip():
         st.error(str(exc))
     else:
         routed = decision.candidates[0]
-        flag = next(c for c in decision.candidates if c.model_id == baseline.model_id)
+        flag = baseline.candidates[0]  # flagship stats (overall if it lacks category data)
         c1, c2 = st.columns(2)
         c1.metric("Routed model", decision.model_id)
         c2.metric("Flagship baseline", baseline.model_id)

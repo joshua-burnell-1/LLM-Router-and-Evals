@@ -131,7 +131,12 @@ class ResultStore:
         return row is not None
 
     def record(self, row: ResultRow) -> None:
-        """Insert or replace the row for (task, version, model, sample)."""
+        """Insert or replace the row for (task, version, model, sample).
+
+        An error row never replaces a successful one (a failed --force rerun keeps the old
+        result)."""
+        if row.error and self.has(row.task_id, row.task_version, row.model_id, row.sample_idx):
+            return
         values = asdict(row)
         values["tokens_estimated"] = int(bool(values["tokens_estimated"]))
         placeholders = ", ".join("?" for _ in _COLUMNS)

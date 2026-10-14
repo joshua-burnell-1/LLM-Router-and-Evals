@@ -24,6 +24,7 @@ tasks:
       extract: regex
       pattern: OUTPUT:\s*`*([^`\n]+?)`*\s*$
       expected: '3'
+      exact: true
   reference_output: 'OUTPUT: 3'
 - id: hard-code-01
   category: reasoning
@@ -45,6 +46,7 @@ tasks:
       extract: regex
       pattern: OUTPUT:\s*`*([^`\n]+?)`*\s*$
       expected: '-5'
+      exact: true
   reference_output: 'OUTPUT: -5'
 - id: hard-code-10
   category: reasoning
@@ -65,6 +67,7 @@ tasks:
       extract: regex
       pattern: OUTPUT:\s*`*([^`\n]+?)`*\s*$
       expected: '6'
+      exact: true
   reference_output: 'OUTPUT: 6'
 - id: hard-code-11
   category: reasoning
@@ -85,6 +88,7 @@ tasks:
       extract: regex
       pattern: OUTPUT:\s*`*([^`\n]+?)`*\s*$
       expected: '7'
+      exact: true
   reference_output: 'OUTPUT: 7'
 - id: hard-code-20
   category: reasoning
@@ -105,6 +109,7 @@ tasks:
       extract: regex
       pattern: OUTPUT:\s*`*([^`\n]+?)`*\s*$
       expected: GnItUoR
+      exact: true
   reference_output: 'OUTPUT: GnItUoR'
 - id: hard-code-21
   category: reasoning
@@ -125,6 +130,7 @@ tasks:
       extract: regex
       pattern: OUTPUT:\s*`*([^`\n]+?)`*\s*$
       expected: tUpHgUoRhT
+      exact: true
   reference_output: 'OUTPUT: tUpHgUoRhT'
 - id: hard-code-30
   category: reasoning
@@ -143,6 +149,7 @@ tasks:
       extract: regex
       pattern: OUTPUT:\s*`*([^`\n]+?)`*\s*$
       expected: '-132'
+      exact: true
   reference_output: 'OUTPUT: -132'
 - id: hard-code-31
   category: reasoning
@@ -161,6 +168,7 @@ tasks:
       extract: regex
       pattern: OUTPUT:\s*`*([^`\n]+?)`*\s*$
       expected: '-275'
+      exact: true
   reference_output: 'OUTPUT: -275'
 - id: hard-code-40
   category: reasoning
@@ -178,6 +186,7 @@ tasks:
       extract: regex
       pattern: OUTPUT:\s*`*([^`\n]+?)`*\s*$
       expected: '[3, -3, 2] [0, 2, 1]'
+      exact: true
   reference_output: 'OUTPUT: [3, -3, 2] [0, 2, 1]'
 - id: hard-code-41
   category: reasoning
@@ -195,6 +204,7 @@ tasks:
       extract: regex
       pattern: OUTPUT:\s*`*([^`\n]+?)`*\s*$
       expected: '[3, -4, 4] [1, 3, 0]'
+      exact: true
   reference_output: 'OUTPUT: [3, -4, 4] [1, 3, 0]'
 - id: hard-date-add0
   category: reasoning
@@ -795,6 +805,7 @@ tasks:
       extract: regex
       pattern: OUTPUT:\s*`*([^`\n]+?)`*\s*$
       expected: 258 5 15
+      exact: true
   reference_output: 'OUTPUT: 258 5 15'
 - id: hard-trace-01
   category: reasoning
@@ -819,6 +830,7 @@ tasks:
       extract: regex
       pattern: OUTPUT:\s*`*([^`\n]+?)`*\s*$
       expected: 52 4 12
+      exact: true
   reference_output: 'OUTPUT: 52 4 12'
 - id: hard-trace-10
   category: reasoning
@@ -837,6 +849,7 @@ tasks:
       extract: regex
       pattern: OUTPUT:\s*`*([^`\n]+?)`*\s*$
       expected: '[''embargo'', ''tundra'', ''lattice''] 28'
+      exact: true
   reference_output: 'OUTPUT: [''embargo'', ''tundra'', ''lattice''] 28'
 - id: hard-trace-11
   category: reasoning
@@ -855,4 +868,5 @@ tasks:
       extract: regex
       pattern: OUTPUT:\s*`*([^`\n]+?)`*\s*$
       expected: '[''umbrella'', ''embargo'', ''tundra''] 43'
+      exact: true
   reference_output: 'OUTPUT: [''umbrella'', ''embargo'', ''tundra''] 43'

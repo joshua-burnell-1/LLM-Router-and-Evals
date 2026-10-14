@@ -318,3 +318,33 @@ def test_task_version_changes_with_system_prompt():
     a = EvalTask(id="x", category="reasoning", prompt="p", scoring=[], system_prompt="s1")
     b = EvalTask(id="x", category="reasoning", prompt="p", scoring=[], system_prompt="s2")
     assert a.version != b.version
+
+
+def test_exact_match_exact_mode_respects_case_and_number_format():
+    pat = r"OUTPUT:\s*(.+)"
+    assert (
+        run(
+            "exact_match",
+            "OUTPUT: GnItUoR",
+            expected="GnItUoR",
+            extract="regex",
+            pattern=pat,
+            exact=True,
+        )
+        == 1.0
+    )
+    assert (
+        run(
+            "exact_match",
+            "OUTPUT: gnituor",
+            expected="GnItUoR",
+            extract="regex",
+            pattern=pat,
+            exact=True,
+        )
+        == 0.0
+    )
+    assert (
+        run("exact_match", "OUTPUT: 3.0", expected="3", extract="regex", pattern=pat, exact=True)
+        == 0.0
+    )

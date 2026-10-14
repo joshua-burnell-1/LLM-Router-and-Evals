@@ -19,10 +19,11 @@ gate for CI, and tooling to grow the eval set without writing code.
   52 templated tasks in YAML packs, and 42 script-generated hard tasks whose gold answers are
   computed (code is executed, puzzles are brute-force verified).
 - **Proof.** A leave-one-out replay of the eval set compares the router against always using
-  the flagship, every fixed model, and an oracle. Bootstrap confidence intervals on every mean.
+  the flagship, every fixed model, and an oracle. Bootstrap confidence intervals on every
+  leaderboard mean.
 - **Operations.** OpenAI-compatible `/v1/chat/completions` with failover, a CI gate that fails
-  on quality regressions, a budget cap, response caching, and an audit that finds broken gold
-  answers.
+  on quality regressions or missing results, a budget cap, an opt-in response cache in the chat
+  client, and an audit that finds broken gold answers.
 
 ## Quick start
 
@@ -189,8 +190,11 @@ providers' pricing pages. `routewise models` shows each model's backend and pric
 - **Generators.** `scripts/generate_hard_pack.py` shows how to produce tasks whose gold answers
   are computed rather than hand-written; tests re-verify them.
 - **Runs.** `--suite`, `--category`, `--tag`, `--task`, `--limit`, `--models`, `--repeats N`
-  for variance, `--concurrency`, `--max-cost` budget cap, `--dry-run`. Runs stop cleanly when a
-  plan or credit limit is hit; errored rows retry on the next run.
+  for variance, `--concurrency`, `--max-cost` budget cap (it stops starting new calls, so it
+  can overshoot by up to one call per concurrent slot), `--dry-run`. Runs through the claude
+  CLI stop cleanly when a plan limit is hit (exit code 3, same as a budget stop); errored rows
+  retry on the next run, and an error never overwrites a good result. `--no-judge` skips tasks
+  that need the judge rather than storing a partial score.
 - **Quality control.** `routewise audit` after every run; `routewise rescore` after fixing
   gold; `routewise export` / `import` to share results without the database.
 
@@ -219,7 +223,9 @@ fails over down the ranking. Streaming is not supported yet.
 `.github/workflows/ci.yml` runs lint, format and the offline test suite (no API calls) on every
 push and pull request. A manual `workflow_dispatch` job runs the core evals against real APIs
 with a budget cap and fails if any (model, category) quality fell more than 0.05 below
-`results/baseline-core.json`:
+`results/baseline-core.json`. The gate also fails when a baseline cell has no current results
+(use `--allow-missing` to tolerate that), so a run cut short by the budget cap cannot pass
+silently:
 
 ```bash
 uv run routewise snapshot --suite core --out results/baseline-core.json   # accept a new baseline
