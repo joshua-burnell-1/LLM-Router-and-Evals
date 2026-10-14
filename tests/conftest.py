@@ -84,3 +84,14 @@ def synthetic_registry(tmp_path):
     path = tmp_path / "models.yaml"
     path.write_text(SYNTHETIC_REGISTRY_YAML)
     return load_models(path)
+
+
+def synthetic_tasks():
+    """Tasks whose ids match synthetic_rows() and whose prompts classify correctly."""
+    tasks = []
+    for i in range(4):
+        tasks.append(
+            make_task(f"reasoning-{i}", "reasoning", f"Calculate how many units remain ({i})")
+        )
+        tasks.append(make_task(f"safety-{i}", "safety", f"Redact the PII from note {i}"))
+    return tasks

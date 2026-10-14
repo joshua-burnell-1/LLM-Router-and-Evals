@@ -13,7 +13,7 @@ from tests.conftest import FakeChat, synthetic_rows
 
 CONFIG = RouterConfig(
     modes={
-        "quality": ModeWeights(quality=1.0, cost=0.02, latency=0.02),
+        "quality": ModeWeights(quality=1.0, cost=0.005, latency=0.005),
         "balanced": ModeWeights(quality=1.0, cost=0.25, latency=0.10, max_quality_drop=0.10),
         "cost": ModeWeights(quality=1.0, cost=1.0, latency=0.10, max_quality_drop=0.15),
     },

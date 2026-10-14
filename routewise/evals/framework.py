@@ -435,13 +435,25 @@ class LLMJudge:
         return Score((raw - 1) / 4, f"judge {raw}/5: {reason}", scorer="llm_judge"), result.cost_usd
 
 
-async def score_output(task: EvalTask, output: str, judge: LLMJudge | None) -> TaskScore:
-    """Run every scorer on the task. Judge components are skipped when `judge` is None."""
+async def score_output(
+    task: EvalTask,
+    output: str,
+    judge: LLMJudge | None,
+    prior_judge_scores: list[Score] | None = None,
+) -> TaskScore:
+    """Run every scorer on the task.
+
+    Judge components use `judge` when given; otherwise they reuse `prior_judge_scores` (in
+    order, for rescoring stored outputs without new judge calls) or are skipped.
+    """
     weighted: list[tuple[ScorerSpec, Score]] = []
     judge_cost = 0.0
+    priors = list(prior_judge_scores or [])
     for spec in task.scoring:
         if spec.type == "llm_judge":
             if judge is None:
+                if priors:
+                    weighted.append((spec, priors.pop(0)))
                 continue
             params = dict(spec.params)
             score, cost = await judge.score(

@@ -7,10 +7,10 @@ default_mode: balanced
 min_samples: 2  # a (model, category) cell needs this many results to be trusted
 
 modes:
-  quality:
+  quality:  # cost and latency only break near-ties
     quality: 1.0
-    cost: 0.02
-    latency: 0.02
+    cost: 0.005
+    latency: 0.005
   balanced:
     quality: 1.0
     cost: 0.25

@@ -30,7 +30,7 @@ def bootstrap_ci(
     values: list[float], *, iterations: int = 1000, alpha: float = 0.05, seed: int = 0
 ) -> tuple[float, float]:
     """Percentile bootstrap confidence interval for the mean."""
-    if len(values) < 2 or len(set(values)) == 1:
+    if iterations <= 0 or len(values) < 2 or len(set(values)) == 1:
         mean = sum(values) / len(values)
         return mean, mean
     rng = random.Random(seed)
