@@ -333,15 +333,20 @@ if not models:
 if problems:
     render(callout("Before you can run: " + " ".join(problems)))
     st.markdown("")
-estimate = estimate_cost(bench, models, registry, judge_model=judge_model) if not problems else None
+estimate = (
+    estimate_cost(bench, models, registry, judge_model=judge_model, store=store)
+    if not problems
+    else None
+)
 if estimate:
     render(
         kpis(
             [
                 (
-                    "Model calls",
+                    "New model calls",
                     str(estimate.calls),
-                    f"{len(bench.effective_cases())} test cases × {len(models)} models",
+                    f"{len(bench.effective_cases())} test cases × {len(models)} models"
+                    + (f", {estimate.cached} already answered (free)" if estimate.cached else ""),
                 ),
                 (
                     "Estimated cost",
@@ -378,7 +383,7 @@ if run_clicked:
     save(bench)
     chat_fn = functools.partial(chat, registry=registry)
     judge = LLMJudge(judge_model, chat_fn=chat_fn) if bench.uses_judge() and judge_model else None
-    with st.status(f"Running {estimate.calls} answers...", expanded=False) as status:
+    with st.status(f"Running {estimate.calls} new answers...", expanded=False) as status:
         summary = asyncio.run(
             run_studio(
                 bench,
@@ -478,7 +483,7 @@ check_rows = [
     for label, v in m.checks.items()
 ]
 if check_rows:
-    render(step("", "Score by check", "Where each model gains or loses points."))
+    render(step("◆", "Score by check", "Where each model gains or loses points."))
     frame = pd.DataFrame(check_rows)
     grid = alt.Chart(frame).encode(
         x=alt.X(
@@ -516,7 +521,7 @@ if check_rows:
 
 render(
     step(
-        "",
+        "◆",
         "Every answer",
         "Pick a test case to read each model's answer and why it scored the way it did.",
     )
@@ -538,7 +543,11 @@ if idx is not None:
     vals = case_values[idx] if idx < len(case_values) else {}
     if vals.get("expected"):
         st.caption(f"Expected: {vals['expected']}")
-    answers = sorted(by_case[idx], key=lambda c: -(c.score if c.score is not None else -1))
+    rank = {m.model_id: i for i, m in enumerate(results.models)}
+    answers = sorted(
+        by_case[idx],
+        key=lambda c: (-(c.score if c.score is not None else -1), rank.get(c.model_id, 99)),
+    )
     cols = st.columns(min(3, len(answers)), gap="medium")
     for i, c in enumerate(answers):
         with cols[i % len(cols)], st.container(border=True):

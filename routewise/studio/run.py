@@ -27,6 +27,7 @@ class CostEstimate:
     per_model: dict[str, float]
     judge_usd: float
     assumed_output_tokens: int
+    cached: int = 0  # answers already stored; rerunning them is free
 
 
 def estimate_cost(
@@ -36,16 +37,23 @@ def estimate_cost(
     *,
     judge_model: str | None = None,
     output_tokens: int = ASSUMED_OUTPUT_TOKENS,
+    store: ResultStore | None = None,
 ) -> CostEstimate:
-    """Rough upper-end cost of running every test case on every model (list prices)."""
+    """Rough upper-end cost of the new answers a run needs (list prices). With a store,
+    answers already recorded for the current prompt version are free and counted as cached."""
     tasks = bench.to_tasks() if not bench.validate() else []
     per_model: dict[str, float] = {}
     judge_usd = 0.0
     judge_spec = registry.get(judge_model) if judge_model else None
+    calls = cached = 0
     for model in models:
         spec = registry[model]
         total = 0.0
         for task in tasks:
+            if store is not None and store.has(task.id, task.version, model):
+                cached += 1
+                continue
+            calls += 1
             prompt_tokens = estimate_tokens((task.system_prompt or "") + task.prompt)
             total += cost_usd(spec, prompt_tokens, output_tokens)
             if bench.uses_judge() and judge_spec is not None:
@@ -53,11 +61,12 @@ def estimate_cost(
                 judge_usd += cost_usd(judge_spec, judge_in, JUDGE_OUTPUT_TOKENS)
         per_model[model] = total
     return CostEstimate(
-        calls=len(tasks) * len(models),
+        calls=calls,
         total_usd=sum(per_model.values()) + judge_usd,
         per_model=per_model,
         judge_usd=judge_usd,
         assumed_output_tokens=output_tokens,
+        cached=cached,
     )
 
 

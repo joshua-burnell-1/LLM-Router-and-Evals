@@ -10,9 +10,13 @@ Reads results from data/results.db (or $ROUTEWISE_DB).
 from pathlib import Path
 
 import streamlit as st
+from dotenv import load_dotenv
+
+from routewise.settings import env_file
 
 HERE = Path(__file__).parent
 
+load_dotenv(env_file())  # keys saved on the Models & keys page, however the app was launched
 st.set_page_config(page_title="routewise", page_icon=":material/alt_route:", layout="wide")
 page = st.navigation(
     {

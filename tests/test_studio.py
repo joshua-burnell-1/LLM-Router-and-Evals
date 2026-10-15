@@ -257,3 +257,12 @@ def test_verdict_single_winner_and_split_winner():
     head, detail = verdict(res, str.upper)
     assert head == "Best quality: A. Best value: B."
     assert "10% of the cost" in detail
+
+
+async def test_cost_estimate_skips_answers_already_stored(tmp_path):
+    store = ResultStore(tmp_path / "r.db")
+    chat = FakeChat(replies={"cheap": "120"})
+    await run_studio(bench(), ["cheap"], store, chat_fn=chat, judge=None, progress=lambda _: None)
+    est = estimate_cost(bench(), ["cheap", "pricey"], REGISTRY, store=store)
+    assert est.cached == 2 and est.calls == 2
+    assert est.per_model["cheap"] == 0 and est.per_model["pricey"] > 0
