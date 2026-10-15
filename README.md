@@ -1,15 +1,34 @@
 # routewise
 
-An eval-gated LLM router. Every routing decision is backed by measured eval scores: routewise
-runs a task suite against each model, records quality, latency and cost per task category, and
-then sends each incoming query to the model with the best trade-off for that kind of query. It
-ships with a live cost/latency/quality dashboard, an OpenAI-compatible endpoint, a regression
-gate for CI, and tooling to grow the eval set without writing code.
+**Know which AI model to use, for every task.** New models ship every few weeks, and public
+leaderboards do not measure your work. routewise benchmarks models on your own prompts, lets
+your team judge answers blind, and routes each request to the cheapest model that meets your
+quality bar, with the evidence for every decision.
 
-![dashboard](docs/dashboard.png)
+![overview](docs/overview.png)
+
+## The product in one loop
+
+1. **Evaluate: Benchmark studio.** Write a prompt once, add test cases, pick any models, and
+   choose the checks that define a good answer. Get a verdict on quality and on value, every
+   answer side by side, and a shareable report. No code, no YAML.
+2. **Compare blind: Blind benchmarks.** For taste and judgment calls, rate answers without
+   knowing which model wrote them, then reveal which model you actually prefer versus the one
+   you use today.
+3. **Route: Model router.** Every scored answer teaches the router, which sends each request to
+   the model with the best quality, cost and latency trade-off for that kind of task, behind an
+   OpenAI-compatible endpoint with failover.
+
+Around the loop: bring-your-own API keys (or your Claude plan), a cost estimate and hard budget
+cap on every run, cached answers so reruns only pay for what is new, a CI gate that fails on
+quality regressions, and 110 built-in eval tasks.
 
 ## What
 
+- **Benchmark studio.** Eleven ready-made checks (exact answer, number match, JSON fields, JSON
+  schema, required and banned phrases, word limits, keeps-the-numbers, regex, no personal data,
+  and an AI judge with your rubric), each with a weight and an optional must-pass flag. Four
+  starter templates. Test cases by table or CSV upload. Results feed the router.
 - **Router.** `route(query, mode)` classifies the query (structured output, reasoning,
   summarization, voice, safety), looks up per-category eval results, and picks a model in
   `quality`, `balanced` or `cost` mode. It returns a plain-English rationale naming the
@@ -35,16 +54,67 @@ gate for CI, and tooling to grow the eval set without writing code.
 uv sync
 uv run routewise import            # load the shipped seed results (no API calls)
 uv run routewise dashboard         # http://localhost:8501
-uv run routewise route "Extract the order id and total as JSON" --mode balanced
-uv run routewise report            # markdown tables
 ```
 
-Run your own evals (see [Models and keys](#models-and-keys)):
+The dashboard opens on the Overview. Then:
+
+- **Models & keys**: see which models are ready. Claude models work through the `claude` CLI on
+  your Claude plan with no key; for other providers paste your own API key (session only, or
+  saved to the git-ignored `.env`).
+- **Benchmark studio**: load the *Word problems* template, pick two models, press **Run**.
+- **Model router**: type a prompt and see which model it would use and why.
+
+From the command line:
 
 ```bash
+uv run routewise route "Extract the order id and total as JSON" --mode balanced
+uv run routewise report            # markdown tables
 uv run routewise eval --limit 4    # cheap smoke run: first 4 tasks x every enabled model
 uv run routewise eval              # everything; reruns skip results already recorded
 ```
+
+## Benchmark studio
+
+Benchmark any model on your own work in five steps, all on one page:
+
+1. **Describe the task.** The prompt exactly as you would send it, with `{{placeholders}}` for
+   whatever changes between test cases. An optional system prompt. The task type is suggested
+   for you.
+2. **Add test cases.** One row per case: a value for each placeholder, plus the expected answer
+   when a check needs one. Edit in the table or upload a CSV.
+3. **Choose the models.** Every ready model is listed; include the one you use today.
+4. **Choose how answers are scored.** Pick checks, tune them, weight them, mark any as must-pass
+   (a failed must-pass check scores the whole answer 0).
+5. **Review and run.** Plain-language problems block the run until fixed. You see the number of
+   new model calls, the estimated cost (answers already stored are free), and set a hard spend
+   cap.
+
+![studio](docs/studio-build.png)
+
+Results lead with a verdict that is honest about ties, then a card per model (score, pass rate,
+cost per answer, latency), a score-by-check heatmap, and every answer with the reason each
+check passed or failed. Download a self-contained HTML report, the answers as CSV, or the
+benchmark as YAML.
+
+![studio results](docs/studio-results.png)
+
+Saved benchmarks (in `data/studio/`, git-ignored) rerun with one click when a new model ships,
+and join the router's evidence automatically. Editing checks rescores stored answers without
+new model calls; editing the prompt starts a fresh version.
+
+Run them headless too, for example as a CI gate on the model you ship:
+
+```bash
+uv run routewise studio list
+uv run routewise studio run word-problems --models claude-haiku-5-5,claude-sonnet-5-5 \
+    --max-cost 1 --min-score 0.9 --html report.html     # exit 1 if any model is below 0.9
+```
+
+Live run on the four starter templates (Claude plan, October 2026): Haiku 5.5, Sonnet 5.5 and
+Opus 5.5 all score 1.00 on Invoice extraction and Faithful summaries, Haiku and Sonnet both score
+1.00 on Word problems, and on Support replies (AI judge) Haiku ties Opus at 0.92 with Sonnet at
+0.88. Haiku costs 5 to 9 percent as much per answer as Opus on these. That is the point of the
+product: on a lot of real work, the flagship buys nothing, and now you can prove it.
 
 ## Blind benchmarks
 
@@ -222,6 +292,9 @@ prompt). Consequences:
 uses its provider API key through LiteLLM when one is set (`ANTHROPIC_API_KEY`,
 `OPENAI_API_KEY`, `GEMINI_API_KEY`, see `.env.example`), and otherwise falls back to the
 `claude` CLI for Claude models. `ROUTEWISE_BACKEND` forces one backend for everything.
+The dashboard's **Models & keys** page shows each model's status and lets users paste their own
+key for the session or save it to `.env` (owner-only permissions, git-ignored, only ever shown
+as its last four characters). Keys are never stored anywhere else.
 
 Claude prices are verified against the list-price cost basis the CLI reports. The OpenAI
 model ids (GPT-6 Astra, GPT-6.1 Sol, GPT-6 Luna) are verified against the OpenAI API; their
