@@ -29,3 +29,5 @@ htmlcov/
 
 # Your own blind benchmarks (may contain private work prompts). Remove to share them.
 data/benchmarks/custom/
+# Your studio benchmarks (may hold private prompts). Remove to share them.
+data/studio/
