@@ -9,7 +9,8 @@ routewise snapshot / gate            save a quality baseline / fail on regressio
 routewise rescore                    rerun scorers on stored outputs (no model calls)
 routewise dashboard                  launch the Streamlit dashboard
 routewise serve                      OpenAI-compatible routing endpoint
-    routewise bench list|run|reveal|history   blind, human-rated model comparisons
+routewise bench list|run|reveal|history   blind, human-rated model comparisons
+routewise studio list|run            run a studio benchmark (CI-friendly with --min-score)
 """
 
 from __future__ import annotations
@@ -320,6 +321,95 @@ def cmd_bench(args: argparse.Namespace) -> int:
     return 2
 
 
+def cmd_studio(args: argparse.Namespace) -> int:
+    """Studio benchmarks from the command line: list them, or run one and print the results."""
+    import functools
+
+    import yaml
+
+    from routewise.evals.framework import LLMJudge
+    from routewise.models.client import chat
+    from routewise.models.registry import display_name
+    from routewise.studio.model import StudioBenchmark, load_saved
+    from routewise.studio.report import html_report
+    from routewise.studio.run import run_studio, summarize
+    from routewise.studio.templates import STARTERS
+
+    saved = load_saved()
+    if args.studio_command == "list":
+        print("| Benchmark | Name | Test cases | Checks |")
+        print("|---|---|---|---|")
+        for b in saved.values():
+            checks = ", ".join(c.key for c in b.checks)
+            print(f"| {b.slug} | {b.name} | {len(b.effective_cases())} | {checks} |")
+        if not saved:
+            print("No saved benchmarks yet. Build one in the dashboard's Benchmark studio.")
+        print("\nTemplates (open them in the studio): " + ", ".join(t.name for t in STARTERS))
+        return 0
+
+    path = Path(args.benchmark)
+    if path.suffix in {".yaml", ".yml"} and path.exists():
+        bench = StudioBenchmark.from_dict(yaml.safe_load(path.read_text()) or {})
+    elif args.benchmark in saved:
+        bench = saved[args.benchmark]
+    else:
+        print(
+            f"unknown benchmark {args.benchmark!r} (see `routewise studio list`)", file=sys.stderr
+        )
+        return 2
+    problems = bench.validate()
+    if problems:
+        print("The benchmark is not ready:\n  " + "\n  ".join(problems), file=sys.stderr)
+        return 2
+    registry = load_models(include_disabled=True)
+    models = [m.strip() for m in args.models.split(",") if m.strip()]
+    judge_model = args.judge or bench.judge_model or None
+    unknown = [m for m in [*models, judge_model] if m and m not in registry]
+    if unknown or not models:
+        print(f"unknown models: {unknown or 'none given'}", file=sys.stderr)
+        return 2
+    if bench.uses_judge() and not judge_model:
+        print("this benchmark uses an AI judge: pass --judge MODEL", file=sys.stderr)
+        return 2
+
+    store = ResultStore(args.db or default_db_path())
+    chat_fn = functools.partial(chat, registry=registry)
+    judge = LLMJudge(judge_model, chat_fn=chat_fn) if bench.uses_judge() else None
+    summary = asyncio.run(
+        run_studio(bench, models, store, chat_fn=chat_fn, judge=judge, max_cost=args.max_cost)
+    )
+    results = summarize(bench, models, store, registry)
+
+    def name(model_id: str) -> str:
+        return display_name(model_id, registry)
+
+    print(f"\n{bench.name}: {results.total_cases} test cases, {len(models)} models")
+    print("| Model | Score | Pass rate | Cost / case | Latency | Errors |")
+    print("|---|---|---|---|---|---|")
+    for m in results.models:
+        print(
+            f"| {name(m.model_id)} | {m.mean_score:.2f} | {m.pass_rate:.0%} | "
+            f"${m.mean_cost_usd:.5f} | {m.mean_latency_s:.1f}s | {m.errors} |"
+        )
+    if results.best_quality:
+        print(
+            f"Best quality: {name(results.best_quality)}. Best value: {name(results.best_value)}."
+        )
+    if args.html:
+        Path(args.html).write_text(html_report(bench, results, name))
+        print(f"Report written to {args.html}")
+
+    failed = summary.n_errors or summary.stopped_for_budget or summary.stopped_for_quota
+    if args.min_score is not None:
+        scored = {m.model_id: m.mean_score for m in results.models}
+        below = [m for m in models if scored.get(m, 0.0) < args.min_score]
+        if below:
+            names = ", ".join(f"{name(m)} ({scored.get(m, 0.0):.2f})" for m in below)
+            print(f"below the {args.min_score:.2f} bar: {names}", file=sys.stderr)
+            return 1
+    return 1 if failed else 0
+
+
 def cmd_serve(args: argparse.Namespace) -> int:
     import uvicorn
 
@@ -395,6 +485,18 @@ def build_parser() -> argparse.ArgumentParser:
     b.add_argument("session")
     bench.add_parser("history", help="human scores per model across sessions")
     p.set_defaults(fn=cmd_bench)
+
+    p = sub.add_parser("studio", help="run benchmarks built in the Benchmark studio")
+    studio = p.add_subparsers(dest="studio_command", required=True)
+    studio.add_parser("list", help="list saved studio benchmarks")
+    s = studio.add_parser("run", help="run a studio benchmark and print the results")
+    s.add_argument("benchmark", help="a saved benchmark id, or a path to its YAML file")
+    s.add_argument("--models", required=True, help="comma-separated model ids")
+    s.add_argument("--judge", help="model for the AI judge check (default: the saved one)")
+    s.add_argument("--max-cost", type=float, default=None, help="stop if spend reaches this ($)")
+    s.add_argument("--min-score", type=float, default=None, help="exit 1 if any model scores below")
+    s.add_argument("--html", help="also write a shareable HTML report here")
+    p.set_defaults(fn=cmd_studio)
 
     p = sub.add_parser("serve", help="OpenAI-compatible routing endpoint")
     p.add_argument("--host", default="127.0.0.1")
