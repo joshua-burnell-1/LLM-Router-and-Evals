@@ -128,19 +128,34 @@ def load_task_packs(directory: str | Path = TASKS_DIR) -> list[EvalTask]:
     return tasks
 
 
+def studio_tasks() -> list[EvalTask]:
+    """Tasks from every saved studio benchmark that is complete enough to run."""
+    from routewise.studio.model import list_saved
+
+    tasks: list[EvalTask] = []
+    for bench in list_saved():
+        if not bench.validate():
+            tasks.extend(bench.to_tasks())
+    return tasks
+
+
 def all_tasks(
     *,
     include_builtin: bool = True,
+    include_studio: bool = True,
     packs_dir: str | Path | None = TASKS_DIR,
     suites: Iterable[str] | None = None,
     categories: Iterable[str] | None = None,
     tags: Iterable[str] | None = None,
     ids: Iterable[str] | None = None,
 ) -> list[EvalTask]:
-    """Built-in tasks plus every pack, filtered. Order is stable (built-ins first)."""
+    """Built-in tasks, every pack and your saved studio benchmarks, filtered. Order is stable
+    (built-ins first)."""
     tasks = list(BUILTIN_TASKS) if include_builtin else []
     if packs_dir is not None and Path(packs_dir).exists():
         tasks.extend(load_task_packs(packs_dir))
+    if include_studio:
+        tasks.extend(studio_tasks())
     _check_unique(tasks)
     if suites:
         tasks = [t for t in tasks if t.suite in set(suites)]

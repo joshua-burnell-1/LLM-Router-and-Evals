@@ -5,8 +5,13 @@ from routewise.models.client import ChatResult
 
 
 @pytest.fixture(autouse=True)
-def hermetic_env(monkeypatch):
-    """Never let tests read a developer's .env or real provider keys (no paid API calls)."""
+def hermetic_env(monkeypatch, tmp_path_factory):
+    """Never let tests read a developer's .env or real provider keys (no paid API calls), and
+    keep user-created benchmarks in temporary folders."""
+    scratch = tmp_path_factory.mktemp("user-data")
+    monkeypatch.setenv("ROUTEWISE_STUDIO_DIR", str(scratch / "studio"))
+    monkeypatch.setenv("ROUTEWISE_CUSTOM_BENCHMARKS", str(scratch / "custom"))
+    monkeypatch.setenv("ROUTEWISE_ENV_FILE", str(scratch / ".env"))
     import routewise.cli
     import routewise.evals.runner
 
