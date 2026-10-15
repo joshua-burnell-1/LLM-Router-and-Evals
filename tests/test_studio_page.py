@@ -53,7 +53,7 @@ def test_run_a_template_end_to_end(env):
     assert not at.exception
     md = _md(at)
     assert "Results" in md and "Score by check" in md
-    assert "Best quality" in md or "wins on quality and value" in md
+    assert any(t in md for t in ("Best quality", "wins on quality and value", "models tie at"))
     assert "Model One" in md and "Model Two" in md
     assert (Path(os.environ["ROUTEWISE_STUDIO_DIR"]) / "word-problems.yaml").exists()
 

@@ -10,7 +10,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 
 from routewise.studio.model import StudioBenchmark
-from routewise.studio.run import StudioResults
+from routewise.studio.run import StudioResults, verdict
 
 _CSS = """
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;
@@ -55,21 +55,8 @@ def html_report(bench: StudioBenchmark, results: StudioResults, name: Callable[[
         f"{len(results.models)} models. Generated {when}.</div>",
     ]
     if results.models:
-        best = results.models[0]
-        value = next(m for m in results.models if m.model_id == results.best_value)
-        if value.model_id == best.model_id:
-            line = (
-                f"{_e(name(best.model_id))} scored highest ({best.mean_score:.2f}) and is "
-                "also the best value."
-            )
-        else:
-            share = (value.mean_cost_usd / best.mean_cost_usd) if best.mean_cost_usd else 0
-            line = (
-                f"Best quality: {_e(name(best.model_id))} ({best.mean_score:.2f}). "
-                f"Best value: {_e(name(value.model_id))} ({value.mean_score:.2f}) at "
-                f"{share:.0%} of the cost."
-            )
-        parts.append(f"<div class='verdict'><b>{line}</b></div>")
+        head, detail = verdict(results, name)
+        parts.append(f"<div class='verdict'><b>{_e(head)}</b><br>{_e(detail)}</div>")
 
         parts.append(
             "<h2>Results by model</h2><table><tr><th>Model</th><th>Score</th>"

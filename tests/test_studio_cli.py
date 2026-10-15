@@ -38,7 +38,13 @@ def test_run_saved_benchmark_prints_results_and_writes_report(env, capsys):
     report = env / "report.html"
     assert main(["studio", "run", "word-problems", "--models", "m1,m2", "--html", str(report)]) == 0
     out = capsys.readouterr().out
-    assert "Model One" in out and "Model Two" in out and "Best quality" in out
+    assert (
+        "Model One" in out
+        and "Model Two" in out
+        and "wins on quality" in out
+        or "tie at" in out
+        or "Best quality" in out
+    )
     assert "<html" in report.read_text()
 
 

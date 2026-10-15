@@ -133,6 +133,54 @@ class StudioResults:
     pass_threshold: float
     total_cases: int
 
+    def tied_best(self, tolerance: float = 0.005) -> list[str]:
+        """Models whose mean score is level with the top score (best first)."""
+        if not self.models:
+            return []
+        top = self.models[0].mean_score
+        return [m.model_id for m in self.models if m.mean_score >= top - tolerance]
+
+
+def _join(names: list[str]) -> str:
+    return names[0] if len(names) == 1 else ", ".join(names[:-1]) + " and " + names[-1]
+
+
+def verdict(results: StudioResults, name: Callable[[str], str]) -> tuple[str, str]:
+    """(headline, one-line explanation) in plain language; calls out ties honestly."""
+    if not results.models:
+        return "No results yet", "Run the benchmark to compare models."
+    by_id = {m.model_id: m for m in results.models}
+    best = results.models[0]
+    value = by_id[results.best_value or best.model_id]
+    tied = results.tied_best()
+    if len(tied) > 1:
+        priciest = max((by_id[m] for m in tied), key=lambda m: m.mean_cost_usd)
+        share = value.mean_cost_usd / priciest.mean_cost_usd if priciest.mean_cost_usd else 1.0
+        head = f"{len(tied)} models tie at {best.mean_score:.2f}."
+        if value.model_id != priciest.model_id:
+            head += f" {name(value.model_id)} does it for {share:.0%} of the cost."
+        detail = (
+            f"{_join([name(m) for m in tied])} all averaged {best.mean_score:.2f} on your checks"
+        )
+        if value.model_id != priciest.model_id:
+            detail += f", so paying for {name(priciest.model_id)} buys nothing here."
+        else:
+            detail += "."
+        if value.model_id not in tied:
+            detail += f" {name(value.model_id)} averaged {value.mean_score:.2f} for even less."
+        return head, detail
+    if value.model_id == best.model_id:
+        return (
+            f"{name(best.model_id)} wins on quality and value",
+            f"It averaged {best.mean_score:.2f} and passed {best.pass_rate:.0%} of test cases.",
+        )
+    share = value.mean_cost_usd / best.mean_cost_usd if best.mean_cost_usd else 0
+    return (
+        f"Best quality: {name(best.model_id)}. Best value: {name(value.model_id)}.",
+        f"{name(best.model_id)} averaged {best.mean_score:.2f}. {name(value.model_id)} averaged "
+        f"{value.mean_score:.2f} at {share:.0%} of the cost, within 0.05 of the best.",
+    )
+
 
 def _check_labels(bench: StudioBenchmark) -> list[tuple[str, str]]:
     """(scorer type, human label) for each configured check, in scoring order."""

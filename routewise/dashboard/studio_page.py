@@ -37,7 +37,7 @@ from routewise.settings import model_status
 from routewise.studio.catalog import CATALOG, CHECKS, defaults
 from routewise.studio.model import CheckConfig, StudioBenchmark, list_saved, save
 from routewise.studio.report import html_report
-from routewise.studio.run import estimate_cost, run_studio, summarize
+from routewise.studio.run import estimate_cost, run_studio, summarize, verdict
 from routewise.studio.templates import TEMPLATES
 
 inject_css()
@@ -421,22 +421,8 @@ render(
         "Scores are 0 to 1, averaged over your checks.",
     )
 )
-best = results.models[0]
-value = next(m for m in results.models if m.model_id == results.best_value)
-if value.model_id == best.model_id:
-    head = f"{name(best.model_id)} wins on quality and value"
-    line = (
-        f"It averaged {best.mean_score:.2f} and passed {best.pass_rate:.0%} of test cases "
-        f"at {money(best.mean_cost_usd)} per answer."
-    )
-else:
-    share = value.mean_cost_usd / best.mean_cost_usd if best.mean_cost_usd else 0
-    head = f"Best quality: {name(best.model_id)}. Best value: {name(value.model_id)}."
-    line = (
-        f"{name(best.model_id)} averaged {best.mean_score:.2f}. {name(value.model_id)} "
-        f"averaged {value.mean_score:.2f} at {share:.0%} of the cost, within 0.05 of the "
-        "best."
-    )
+head, line = verdict(results, name)
+tied = results.tied_best()
 render(
     verdict_card(
         head,
@@ -453,10 +439,12 @@ st.markdown("")
 max_cost = max(m.mean_cost_usd for m in results.models) or 1.0
 cols = st.columns(min(3, len(results.models)), gap="medium")
 for i, m in enumerate(results.models):
-    if m.model_id == results.best_quality:
-        badge, bkind, kind = "Best quality", "accent", "chosen"
-    elif m.model_id == results.best_value:
-        badge, bkind, kind = "Best value", "accent", ""
+    if m.model_id == results.best_value:
+        badge, bkind, kind = "Best value", "accent", "chosen"
+    elif m.model_id == results.best_quality and len(tied) == 1:
+        badge, bkind, kind = "Best quality", "accent", ""
+    elif m.model_id in tied:
+        badge, bkind, kind = "Top score (tie)", "", ""
     else:
         badge, bkind, kind = f"#{i + 1}", "", ""
     foot = f"{m.cases} of {results.total_cases} test cases answered."

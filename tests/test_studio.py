@@ -224,3 +224,36 @@ def test_invalid_saved_benchmark_is_skipped_not_fatal(monkeypatch, tmp_path):
     monkeypatch.setenv("ROUTEWISE_STUDIO_DIR", str(tmp_path))
     save(bench(name="Broken", cases=[{"invoice": "x"}]), tmp_path)  # missing expected
     assert not any(t.id.startswith("studio-broken") for t in all_tasks())
+
+
+def _mr(model_id, score, cost):
+    from routewise.studio.run import ModelResult
+
+    return ModelResult(model_id, 3, score, 1.0, cost, cost * 3, 1.0, {})
+
+
+def _results(models, best_value):
+    from routewise.studio.run import StudioResults
+
+    return StudioResults(models, [], models[0].model_id, best_value, 0.8, 3)
+
+
+def test_verdict_calls_out_ties_and_the_cheapest():
+    from routewise.studio.run import verdict
+
+    res = _results([_mr("a", 1.0, 0.0001), _mr("b", 1.0, 0.001), _mr("c", 1.0, 0.002)], "a")
+    head, detail = verdict(res, str.upper)
+    assert head == "3 models tie at 1.00. A does it for 5% of the cost."
+    assert "A, B and C all averaged 1.00" in detail
+    assert res.tied_best() == ["a", "b", "c"]
+
+
+def test_verdict_single_winner_and_split_winner():
+    from routewise.studio.run import verdict
+
+    res = _results([_mr("a", 0.9, 0.001), _mr("b", 0.5, 0.0001)], "a")
+    assert verdict(res, str.upper)[0] == "A wins on quality and value"
+    res = _results([_mr("a", 0.95, 0.01), _mr("b", 0.92, 0.001)], "b")
+    head, detail = verdict(res, str.upper)
+    assert head == "Best quality: A. Best value: B."
+    assert "10% of the cost" in detail

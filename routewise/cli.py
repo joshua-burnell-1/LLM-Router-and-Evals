@@ -332,7 +332,7 @@ def cmd_studio(args: argparse.Namespace) -> int:
     from routewise.models.registry import display_name
     from routewise.studio.model import StudioBenchmark, load_saved
     from routewise.studio.report import html_report
-    from routewise.studio.run import run_studio, summarize
+    from routewise.studio.run import run_studio, summarize, verdict
     from routewise.studio.templates import STARTERS
 
     saved = load_saved()
@@ -391,10 +391,8 @@ def cmd_studio(args: argparse.Namespace) -> int:
             f"| {name(m.model_id)} | {m.mean_score:.2f} | {m.pass_rate:.0%} | "
             f"${m.mean_cost_usd:.5f} | {m.mean_latency_s:.1f}s | {m.errors} |"
         )
-    if results.best_quality:
-        print(
-            f"Best quality: {name(results.best_quality)}. Best value: {name(results.best_value)}."
-        )
+    if results.models:
+        print("\n".join(verdict(results, name)))
     if args.html:
         Path(args.html).write_text(html_report(bench, results, name))
         print(f"Report written to {args.html}")
