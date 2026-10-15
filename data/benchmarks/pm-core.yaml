@@ -5,6 +5,7 @@
 suite: pm-core
 benchmarks:
   - id: pm-prd
+    summary: "Scope a feature from a noisy Slack thread: goals, metrics, MVP, open questions."
     title: Turn a messy request into a one-page PRD
     tags: [writing, scoping]
     guidance: |
@@ -32,6 +33,7 @@ benchmarks:
       email the export directly to the accountant.
 
   - id: pm-prioritization
+    summary: "RICE-style trade-offs under a 30 engineer-week budget and a compliance deadline."
     title: Prioritize a backlog under a hard capacity limit
     tags: [prioritization, tradeoffs]
     guidance: |
@@ -55,6 +57,7 @@ benchmarks:
       | 8 | SCIM user provisioning | 600 | 2 | 80% | 5 | Only useful after SSO ships |
 
   - id: pm-interview-synthesis
+    summary: "Turn six interviews into evidence-backed themes and the next thing to validate."
     title: Synthesize user interviews into insights
     tags: [research, synthesis]
     guidance: |
@@ -80,6 +83,7 @@ benchmarks:
       P6 (student, tight budget): Plans around grocery deals; would pay for nothing.
 
   - id: pm-metrics-experiment
+    summary: "Pick the right success metric, guardrails and A/B design from real baselines."
     title: Define success metrics and an A/B test
     tags: [metrics, experimentation]
     guidance: |
@@ -99,6 +103,7 @@ benchmarks:
       state in advance what result means ship, iterate, or kill.
 
   - id: pm-exec-update
+    summary: "Tell the exec team a launch slipped, with options and a clear recommendation."
     title: Write an executive update with bad news
     tags: [communication, stakeholders]
     guidance: |
@@ -120,6 +125,7 @@ benchmarks:
       You are the PM; recommend one option.
 
   - id: pm-launch-decision
+    summary: "Read mixed A/B results (conversion up, refunds up) and make the call."
     title: Make a go/no-go call on mixed experiment results
     tags: [decision-making, data]
     guidance: |
@@ -145,6 +151,7 @@ benchmarks:
       Should we ship? Give a recommendation, your reasoning, and what you would do next.
 
   - id: pm-competitive-positioning
+    summary: "Respond to a competitor's price cut using win/loss and segment data."
     title: Respond to a competitor move
     tags: [strategy, positioning]
     guidance: |

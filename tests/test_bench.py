@@ -221,3 +221,21 @@ def test_custom_dir_can_be_redirected_by_env(tmp_path, monkeypatch):
     save_custom_benchmark(Benchmark(id="", title="Env Bench", prompt="p"))
     assert (tmp_path / "mine" / "env-bench.yaml").exists()
     assert "env-bench" in load_benchmarks()
+
+
+def test_pm_benchmarks_have_short_summaries_that_do_not_change_the_version():
+    benches = load_benchmarks(BUILTIN_DIR, custom_dir=None)
+    for b in benches.values():
+        if b.suite == "pm-core":
+            assert b.summary and len(b.summary) <= 120, b.id
+    a = Benchmark(id="x", title="t", prompt="p", summary="one")
+    b = Benchmark(id="x", title="t", prompt="p", summary="two")
+    assert a.version == b.version
+
+
+def test_card_blurb_falls_back_to_truncated_guidance():
+    from routewise.bench.core import card_blurb
+
+    long = Benchmark(id="x", title="t", prompt="p", guidance="word " * 60)
+    assert len(card_blurb(long)) <= 125 and card_blurb(long).endswith("…")
+    assert card_blurb(Benchmark(id="y", title="t", prompt="p", summary="Short.")) == "Short."

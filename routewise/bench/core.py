@@ -70,6 +70,7 @@ class Benchmark:
     guidance: str = ""
     system_prompt: str | None = None
     tags: tuple[str, ...] = ()
+    summary: str = ""  # one line on what the task tests, for task pickers
 
     @property
     def version(self) -> str:
@@ -96,6 +97,7 @@ def _from_file(path: Path) -> list[Benchmark]:
                 guidance=(raw.get("guidance") or "").strip(),
                 system_prompt=raw.get("system_prompt"),
                 tags=tuple(raw.get("tags", ())),
+                summary=(raw.get("summary") or "").strip(),
             )
         )
     return out
@@ -118,6 +120,15 @@ def load_benchmarks(
                 raise ValueError(f"duplicate benchmark id {b.id!r} in {path}")
             benches[b.id] = b
     return benches
+
+
+def card_blurb(bench: Benchmark, limit: int = 120) -> str:
+    """One short line describing a benchmark: its summary, or the start of its guidance."""
+    text = bench.summary or bench.guidance
+    text = " ".join(text.split())
+    if len(text) <= limit:
+        return text
+    return text[:limit].rsplit(" ", 1)[0].rstrip(",.;") + "…"
 
 
 def slugify(text: str) -> str:
@@ -143,6 +154,8 @@ def save_custom_benchmark(bench: Benchmark, directory: str | Path | None = None)
         entry["system_prompt"] = bench.system_prompt
     if bench.tags:
         entry["tags"] = list(bench.tags)
+    if bench.summary.strip():
+        entry["summary"] = bench.summary.strip()
     doc = {"suite": bench.suite or "custom", "benchmarks": [entry]}
     path.write_text(yaml.safe_dump(doc, sort_keys=False, allow_unicode=True, width=100))
     return path

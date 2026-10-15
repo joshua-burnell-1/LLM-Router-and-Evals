@@ -26,21 +26,43 @@ def env(tmp_path, monkeypatch):
     return tmp_path
 
 
-def test_blind_session_end_to_end(env):
-    at = AppTest.from_file(PAGE, default_timeout=60).run()
-    assert not at.exception
-    at.multiselect(key="bench-select").set_value(["pm-prd"])
+def _md(at):
+    return "\n".join(m.value for m in at.markdown)
+
+
+def _start_one_task_session(at):
+    for cb in at.checkbox:
+        if cb.key and cb.key.startswith("pick-"):
+            cb.set_value(cb.key == "pick-pm-prd")
     at.multiselect(key="model-select").set_value(["m1", "m2"])
     at.run()
     at.selectbox(key="baseline-select").set_value("m1")
     at.button(key="generate").click()
     at.run()
-    assert not at.exception
 
+
+def test_setup_explains_the_flow(env):
+    at = AppTest.from_file(PAGE, default_timeout=60).run()
+    assert not at.exception
+    md = _md(at)
+    assert "Which model do you actually prefer?" in md
+    assert "Rate blind" in md and "Reveal" in md
+    assert at.radio(key="bench-step").value == "setup"
+    assert sum(1 for c in at.checkbox if c.key and c.key.startswith("pick-")) == 7
+
+
+def test_blind_session_end_to_end(env):
+    at = AppTest.from_file(PAGE, default_timeout=60).run()
+    _start_one_task_session(at)
+    assert not at.exception
+    # generating moves you straight to rating
+    assert at.radio(key="bench-step").value == "rate"
     store = BenchStore(env / "r.db")
     [session] = store.sessions()
     outputs = store.outputs(session.session_id)
-    assert at.button(key="reveal") is not None and not _revealable(at)
+    md = _md(at)
+    assert "Response A" in md and "Response B" in md
+    assert "m1" not in [b.label for b in at.button]  # identities stay hidden
 
     for o in outputs:
         at.radio(key=f"score-{o.id}").set_value(4 if o.model_id == "m2" else 2)
@@ -52,19 +74,29 @@ def test_blind_session_end_to_end(env):
     at.button(key="reveal").click()
     at.run()
     assert not at.exception
-    assert any("m2" in s.value for s in at.success)
+    assert at.radio(key="bench-step").value == "reveal"
+    assert "You preferred m2" in _md(at)
     assert store.session(session.session_id).revealed_at
 
 
-def _revealable(at):
-    try:
-        return not at.button(key="reveal").disabled
-    except KeyError:
-        return False
+def test_reveal_button_disabled_until_all_rated(env):
+    at = AppTest.from_file(PAGE, default_timeout=60).run()
+    _start_one_task_session(at)
+    assert at.button(key="reveal").disabled
+
+
+def test_history_step_renders_empty(env):
+    at = AppTest.from_file(PAGE, default_timeout=60).run()
+    at.radio(key="bench-step").set_value("history")
+    at.run()
+    assert not at.exception
+    assert "No revealed sessions yet" in _md(at)
 
 
 def test_create_custom_benchmark_from_the_page(env):
     at = AppTest.from_file(PAGE, default_timeout=60).run()
+    at.radio(key="bench-step").set_value("create")
+    at.run()
     at.text_input(key="new-title").input("Quarterly planning memo")
     at.text_area(key="new-prompt").input("Draft my Q3 planning memo from these notes: ...")
     at.text_area(key="new-guidance").input("Clear priorities, explicit cuts.")

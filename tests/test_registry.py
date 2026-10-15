@@ -124,3 +124,23 @@ def test_non_string_model_id_is_rejected(tmp_path):
     path.write_text("models:\n  - {id: off, provider: mock, input_price: 1, output_price: 1}\n")
     with pytest.raises(ValueError, match="quote it"):
         load_models(path)
+
+
+def test_display_name_prefers_configured_name(tmp_path):
+    from routewise.models.registry import display_name
+
+    path = tmp_path / "m.yaml"
+    path.write_text(
+        "models:\n  - {id: c-op, name: Claude Opus 5.5, provider: anthropic, "
+        "input_price: 1, output_price: 1}\n  - {id: bare, provider: mock, "
+        "input_price: 1, output_price: 1}\n"
+    )
+    models = load_models(path)
+    assert display_name("c-op", models) == "Claude Opus 5.5"
+    assert display_name("bare", models) == "bare"
+    assert display_name("unknown-model", models) == "unknown-model"
+
+
+def test_repo_models_have_display_names():
+    for spec in load_models(include_disabled=True).values():
+        assert spec.name, spec.id

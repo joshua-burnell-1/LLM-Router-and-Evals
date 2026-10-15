@@ -13,6 +13,7 @@
 
 models:
   - id: claude-opus-5-5
+    name: Claude Opus 5.5
     provider: anthropic
     litellm_model: anthropic/claude-opus-5-5
     cli_model: opus
@@ -21,6 +22,7 @@ models:
     tier: flagship
 
   - id: claude-sonnet-5-5
+    name: Claude Sonnet 5.5
     provider: anthropic
     litellm_model: anthropic/claude-sonnet-5-5
     cli_model: sonnet
@@ -29,6 +31,7 @@ models:
     tier: mid
 
   - id: claude-haiku-5-5
+    name: Claude Haiku 5.5
     provider: anthropic
     litellm_model: anthropic/claude-haiku-5-5
     cli_model: haiku
@@ -37,6 +40,7 @@ models:
     tier: budget
 
   - id: gpt-6-astra
+    name: GPT-6 Astra
     provider: openai
     litellm_model: openai/gpt-6-astra
     input_price: 10.00  # UNVERIFIED price
@@ -45,6 +49,7 @@ models:
     price_verified: false
 
   - id: gpt-6.1-sol
+    name: GPT-6.1 Sol
     provider: openai
     litellm_model: openai/gpt-6.1-sol
     input_price: 2.00  # UNVERIFIED price
@@ -53,6 +58,7 @@ models:
     price_verified: false
 
   - id: gpt-6-luna
+    name: GPT-6 Luna
     provider: openai
     litellm_model: openai/gpt-6-luna
     input_price: 0.10  # UNVERIFIED price
@@ -61,6 +67,7 @@ models:
     price_verified: false
 
   - id: gemini-3-1-pro
+    name: Gemini 3.1 Pro
     provider: gemini
     litellm_model: gemini/gemini-3.1-pro  # UNVERIFIED model id and price
     input_price: 2.00
@@ -70,6 +77,7 @@ models:
     price_verified: false
 
   - id: gemini-2-5-flash
+    name: Gemini 2.5 Flash
     provider: gemini
     litellm_model: gemini/gemini-2.5-flash  # UNVERIFIED price
     input_price: 0.30

@@ -51,7 +51,11 @@ uv run routewise eval              # everything; reruns skip results already rec
 Public benchmarks tell you how models do on someone else's tasks. Blind benchmarks tell you
 which model *you* prefer on *your* tasks, without brand bias.
 
-![blind benchmarks](docs/blind-benchmarks.png)
+![rating answers blind](docs/blind-benchmarks.png)
+
+![the reveal (example ratings)](docs/blind-reveal.png)
+
+*The reveal above uses example ratings for illustration.*
 
 1. **Start a session** (dashboard page "Blind benchmarks", or `routewise bench run`): pick
    benchmarks, two or more models, and your current model as the baseline. Every model answers

@@ -42,6 +42,7 @@ class ModelSpec:
     price_verified: bool = True
     tier: str = ""
     notes: str = ""
+    name: str = ""  # display name, e.g. "Claude Opus 5.5"
 
 
 def load_models(
@@ -74,6 +75,16 @@ def get_model(model_id: str, registry: Mapping[str, ModelSpec] | None = None) ->
         return registry[model_id]
     except KeyError:
         raise UnknownModelError(f"unknown model {model_id!r}; known: {sorted(registry)}") from None
+
+
+def display_name(model_id: str, registry: Mapping[str, ModelSpec] | None = None) -> str:
+    """Human-friendly model name (falls back to the id)."""
+    registry = registry if registry is not None else load_models(include_disabled=True)
+    spec = registry.get(model_id)
+    return spec.name if spec is not None and spec.name else model_id
+
+
+PROVIDER_LABELS = {"anthropic": "Anthropic", "openai": "OpenAI", "gemini": "Google", "mock": "Mock"}
 
 
 def cost_usd(spec: ModelSpec, input_tokens: int, output_tokens: int) -> float:

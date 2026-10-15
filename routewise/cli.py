@@ -231,7 +231,8 @@ def cmd_import(args: argparse.Namespace) -> int:
 
 def cmd_dashboard(args: argparse.Namespace) -> int:
     app = Path(__file__).parent / "dashboard" / "app.py"
-    return subprocess.call([sys.executable, "-m", "streamlit", "run", str(app)])
+    # Run from the project root so .streamlit/config.toml (the theme) is picked up.
+    return subprocess.call([sys.executable, "-m", "streamlit", "run", str(app)], cwd=PROJECT_ROOT)
 
 
 def cmd_bench(args: argparse.Namespace) -> int:

@@ -41,35 +41,53 @@ def _seed(db):
             )
 
 
+def _md(at):
+    return "\n".join(m.value for m in at.markdown)
+
+
 def test_empty_database_shows_instructions(env):
     at = AppTest.from_file(APP, default_timeout=60).run()
     assert not at.exception
-    assert any("routewise eval" in i.value for i in at.info)
+    assert "routewise eval" in _md(at)
 
 
-def test_renders_leaderboard_and_savings(env):
+def test_landing_explains_the_product_and_shows_evidence(env):
     _seed(env)
     at = AppTest.from_file(APP, default_timeout=60).run()
     assert not at.exception
-    assert at.sidebar.radio[0].options == ["quality", "balanced", "cost"]
-    assert set(at.sidebar.multiselect[0].value) == {"big", "mid", "small"}
-    headers = [h.value for h in at.subheader]
-    assert any("Leaderboard" in h for h in headers)
-    assert any("savings" in h.lower() for h in headers)
+    md = _md(at)
+    assert "Model router" in md and "Enter a prompt" in md
+    assert "Models compared" in md and "Cost saved" in md
+    assert at.radio(key="mode").options == ["Best answer", "Best value", "Lowest cost"]
+    assert set(at.multiselect(key="models").value) == {"big", "mid", "small"}
+    labels = [t.label for t in at.tabs]
+    assert "Quality by task type" in labels and "How routing works" in labels
 
 
-def test_query_shows_routed_vs_flagship(env):
+def test_route_shows_verdict_and_every_model(env):
     _seed(env)
     at = AppTest.from_file(APP, default_timeout=60).run()
-    at.sidebar.radio[0].set_value("balanced")
-    at.text_area[0].input("Calculate how many units remain after shipping 15%")
-    at.button[0].click()
+    at.radio(key="mode").set_value("balanced")
+    at.text_area(key="prompt").input("Calculate how many units remain after shipping 15%")
+    at.button(key="route").click()
     at.run()
     assert not at.exception
-    labels = {m.label: m.value for m in at.metric}
-    assert labels.get("Routed model") == "mid"
-    assert labels.get("Flagship baseline") == "big"
-    assert any("reasoning" in i.value for i in at.info)
+    md = _md(at)
+    assert "Send this prompt to mid" in md
+    assert "Reasoning" in md
+    assert "Recommended" in md and "Flagship" in md
+    # every candidate gets a card, including the one excluded by the quality guard
+    assert md.count('class="rw-card') >= 3
+    assert "Not eligible" in md
+
+
+def test_empty_prompt_asks_for_input(env):
+    _seed(env)
+    at = AppTest.from_file(APP, default_timeout=60).run()
+    at.button(key="route").click()
+    at.run()
+    assert not at.exception
+    assert any("Enter a prompt" in w.value for w in at.warning)
 
 
 def test_markdown_escape_stops_dollar_amounts_rendering_as_latex():

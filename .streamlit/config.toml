@@ -1,0 +1,14 @@
+# Dashboard theme (matches routewise/dashboard/ui.py tokens).
+[theme]
+base = "light"
+primaryColor = "#2a78d6"
+backgroundColor = "#fcfcfb"
+secondaryBackgroundColor = "#f3f2ef"
+textColor = "#0b0b0b"
+borderColor = "#e7e5e0"
+
+[client]
+toolbarMode = "viewer"
+
+[browser]
+gatherUsageStats = false
