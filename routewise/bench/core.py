@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import os
 import random
 import re
 import string
@@ -29,6 +30,13 @@ from routewise.models.client import ChatResult, chat
 
 BUILTIN_DIR = DATA_DIR / "benchmarks"
 CUSTOM_DIR = BUILTIN_DIR / "custom"
+_DEFAULT = object()
+
+
+def custom_dir() -> Path:
+    """Where your own benchmarks live ($ROUTEWISE_CUSTOM_BENCHMARKS overrides)."""
+    return Path(os.environ.get("ROUTEWISE_CUSTOM_BENCHMARKS") or CUSTOM_DIR)
+
 
 DEFAULT_SYSTEM_PROMPT = (
     "You are an experienced senior product manager. Answer the request directly and concretely, "
@@ -94,9 +102,12 @@ def _from_file(path: Path) -> list[Benchmark]:
 
 
 def load_benchmarks(
-    builtin_dir: str | Path = BUILTIN_DIR, custom_dir: str | Path | None = CUSTOM_DIR
+    builtin_dir: str | Path = BUILTIN_DIR, custom_dir: str | Path | None | object = _DEFAULT
 ) -> dict[str, Benchmark]:
-    """Built-in benchmarks plus your own (custom ids may not clash with built-in ones)."""
+    """Built-in benchmarks plus your own (custom ids may not clash with built-in ones).
+    Pass custom_dir=None to load built-ins only."""
+    if custom_dir is _DEFAULT:
+        custom_dir = globals()["custom_dir"]()
     paths = sorted(Path(builtin_dir).glob("*.y*ml")) if Path(builtin_dir).exists() else []
     if custom_dir is not None and Path(custom_dir).exists():
         paths += sorted(Path(custom_dir).glob("*.y*ml"))
@@ -114,15 +125,15 @@ def slugify(text: str) -> str:
     return slug[:60] or "benchmark"
 
 
-def save_custom_benchmark(bench: Benchmark, custom_dir: str | Path = CUSTOM_DIR) -> Path:
+def save_custom_benchmark(bench: Benchmark, directory: str | Path | None = None) -> Path:
     """Write a user-created benchmark to its own YAML file and return the path."""
     if not bench.title.strip() or not bench.prompt.strip():
         raise ValueError("a benchmark needs a title and a prompt")
     bench_id = bench.id or slugify(bench.title)
-    custom_dir = Path(custom_dir)
-    custom_dir.mkdir(parents=True, exist_ok=True)
-    path = custom_dir / f"{bench_id}.yaml"
-    taken = set(load_benchmarks(BUILTIN_DIR, custom_dir))
+    directory = Path(directory) if directory is not None else custom_dir()
+    directory.mkdir(parents=True, exist_ok=True)
+    path = directory / f"{bench_id}.yaml"
+    taken = set(load_benchmarks(BUILTIN_DIR, directory))
     if path.exists() or bench_id in taken:
         raise ValueError(f"a benchmark with id {bench_id!r} already exists")
     entry = {"id": bench_id, "title": bench.title.strip(), "prompt": bench.prompt.strip()}

@@ -211,3 +211,13 @@ def test_redact_identity(text):
 
 def test_redact_leaves_ordinary_text():
     assert redact_identity("Ship the MVP in Q3.") == "Ship the MVP in Q3."
+
+
+def test_custom_dir_can_be_redirected_by_env(tmp_path, monkeypatch):
+    from routewise.bench.core import custom_dir
+
+    monkeypatch.setenv("ROUTEWISE_CUSTOM_BENCHMARKS", str(tmp_path / "mine"))
+    assert custom_dir() == tmp_path / "mine"
+    save_custom_benchmark(Benchmark(id="", title="Env Bench", prompt="p"))
+    assert (tmp_path / "mine" / "env-bench.yaml").exists()
+    assert "env-bench" in load_benchmarks()

@@ -7,7 +7,7 @@ from routewise.evals.store import ResultRow, ResultStore
 from routewise.evals.tasks import BUILTIN_TASKS
 from tests.conftest import SYNTHETIC_REGISTRY_YAML
 
-APP = str(Path(__file__).resolve().parents[1] / "routewise" / "dashboard" / "app.py")
+APP = str(Path(__file__).resolve().parents[1] / "routewise" / "dashboard" / "router_page.py")
 PROFILE = {"big": (0.95, 0.010, 3.0), "mid": (0.90, 0.002, 1.5), "small": (0.50, 0.0002, 0.8)}
 
 
@@ -77,3 +77,17 @@ def test_markdown_escape_stops_dollar_amounts_rendering_as_latex():
 
     text = "Winner a ($0.00020/query) over b ($0.00200/query)"
     assert escape_markdown(text) == "Winner a (\\$0.00020/query) over b (\\$0.00200/query)"
+
+
+def test_demote_headings_keeps_response_headings_small():
+    from routewise.dashboard import demote_headings
+
+    text = "# Plan\nbody\n## Scoring\n#### Detail\nnot # a heading"
+    assert demote_headings(text) == "##### Plan\nbody\n##### Scoring\n##### Detail\nnot # a heading"
+
+
+def test_demote_headings_ignores_code_fences():
+    from routewise.dashboard import demote_headings
+
+    text = "```python\n# a comment\n```\n# Title"
+    assert demote_headings(text) == "```python\n# a comment\n```\n##### Title"

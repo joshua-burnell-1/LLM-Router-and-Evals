@@ -9,6 +9,7 @@ routewise snapshot / gate            save a quality baseline / fail on regressio
 routewise rescore                    rerun scorers on stored outputs (no model calls)
 routewise dashboard                  launch the Streamlit dashboard
 routewise serve                      OpenAI-compatible routing endpoint
+    routewise bench list|run|reveal|history   blind, human-rated model comparisons
 """
 
 from __future__ import annotations
@@ -233,6 +234,91 @@ def cmd_dashboard(args: argparse.Namespace) -> int:
     return subprocess.call([sys.executable, "-m", "streamlit", "run", str(app)])
 
 
+def cmd_bench(args: argparse.Namespace) -> int:
+    """Blind benchmarks: list, run (generate blind responses), reveal, history."""
+    import functools
+
+    from routewise.bench.core import (
+        NotCompleteError,
+        create_session,
+        generate_outputs,
+        history,
+        load_benchmarks,
+        reveal,
+    )
+    from routewise.bench.store import BenchStore
+    from routewise.models.client import chat
+
+    benches = load_benchmarks()
+    store = BenchStore(args.db or default_db_path())
+
+    if args.bench_command == "list":
+        print("| Benchmark | Suite | Title | Version |")
+        print("|---|---|---|---|")
+        for b in benches.values():
+            print(f"| {b.id} | {b.suite} | {b.title} | {b.version} |")
+        return 0
+
+    if args.bench_command == "run":
+        registry = load_models(include_disabled=True)
+        models = [m.strip() for m in args.models.split(",") if m.strip()]
+        unknown = [m for m in models if m not in registry]
+        if unknown:
+            print(f"unknown models: {unknown}", file=sys.stderr)
+            return 2
+        if args.bench:
+            ids = [b.strip() for b in args.bench.split(",") if b.strip()]
+            missing = [b for b in ids if b not in benches]
+            if missing:
+                print(f"unknown benchmarks: {missing}", file=sys.stderr)
+                return 2
+            chosen = [benches[b] for b in ids]
+        else:
+            chosen = [b for b in benches.values() if b.suite == args.suite]
+        try:
+            sid = create_session(store, chosen, models, baseline=args.baseline, name=args.name)
+        except ValueError as exc:
+            print(str(exc), file=sys.stderr)
+            return 2
+        chat_fn = functools.partial(chat, registry=registry)
+        n = len(chosen) * len(models)
+        print(f"session {sid}: generating {n} blind responses...")
+        done = asyncio.run(generate_outputs(store, sid, benches, chat_fn=chat_fn, progress=print))
+        failed = n - done
+        print(f"{done} responses ready" + (f", {failed} failed (rerun to retry)" if failed else ""))
+        print("Rate them in the dashboard: `routewise dashboard`, page 'Blind benchmarks'.")
+        return 1 if failed else 0
+
+    if args.bench_command == "reveal":
+        try:
+            result = reveal(store, args.session)
+        except NotCompleteError as exc:
+            print(str(exc), file=sys.stderr)
+            return 1
+        print(f"You preferred {result.preferred} (baseline: {result.baseline})")
+        for m in result.models:
+            print(
+                f"  {m.model_id:<22} mean {m.mean_score:.2f}  wins {m.wins:g}  "
+                f"vs baseline {m.delta_vs_baseline:+.2f}"
+            )
+        return 0
+
+    if args.bench_command == "history":
+        rows = history(store, benches)
+        if not rows:
+            print("No revealed sessions yet.")
+            return 0
+        print("| Model | Mean human score | Ratings | Sessions | First | Last |")
+        print("|---|---|---|---|---|---|")
+        for r in rows:
+            print(
+                f"| {r.model_id} | {r.mean_score:.2f} | {r.ratings} | {r.sessions} | "
+                f"{r.first_at[:10]} | {r.last_at[:10]} |"
+            )
+        return 0
+    return 2
+
+
 def cmd_serve(args: argparse.Namespace) -> int:
     import uvicorn
 
@@ -294,6 +380,20 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("path", nargs="?", default="results/seed_results.jsonl")
     p.set_defaults(fn=cmd_import)
     sub.add_parser("dashboard", help="launch Streamlit").set_defaults(fn=cmd_dashboard)
+
+    p = sub.add_parser("bench", help="blind, human-rated model comparisons")
+    bench = p.add_subparsers(dest="bench_command", required=True)
+    bench.add_parser("list", help="list benchmarks")
+    b = bench.add_parser("run", help="generate blind responses for a new session")
+    b.add_argument("--models", required=True, help="comma-separated model ids (2 or more)")
+    b.add_argument("--baseline", required=True, help="the model you use today")
+    b.add_argument("--suite", default="pm-core")
+    b.add_argument("--bench", help="comma-separated benchmark ids (overrides --suite)")
+    b.add_argument("--name")
+    b = bench.add_parser("reveal", help="unblind a fully rated session")
+    b.add_argument("session")
+    bench.add_parser("history", help="human scores per model across sessions")
+    p.set_defaults(fn=cmd_bench)
 
     p = sub.add_parser("serve", help="OpenAI-compatible routing endpoint")
     p.add_argument("--host", default="127.0.0.1")

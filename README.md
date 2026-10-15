@@ -21,6 +21,10 @@ gate for CI, and tooling to grow the eval set without writing code.
 - **Proof.** A leave-one-out replay of the eval set compares the router against always using
   the flagship, every fixed model, and an oracle. Bootstrap confidence intervals on every
   leaderboard mean.
+- **Blind benchmarks.** Your own judgement as the benchmark: run fixed, real-work tasks across
+  models, rate each response without knowing which model wrote it, then reveal which model you
+  preferred and how it compares with the model you use today. Ships with seven product
+  management benchmarks; add your own.
 - **Operations.** OpenAI-compatible `/v1/chat/completions` with failover, a CI gate that fails
   on quality regressions or missing results, a budget cap, an opt-in response cache in the chat
   client, and an audit that finds broken gold answers.
@@ -41,6 +45,44 @@ Run your own evals (see [Models and keys](#models-and-keys)):
 uv run routewise eval --limit 4    # cheap smoke run: first 4 tasks x every enabled model
 uv run routewise eval              # everything; reruns skip results already recorded
 ```
+
+## Blind benchmarks
+
+Public benchmarks tell you how models do on someone else's tasks. Blind benchmarks tell you
+which model *you* prefer on *your* tasks, without brand bias.
+
+![blind benchmarks](docs/blind-benchmarks.png)
+
+1. **Start a session** (dashboard page "Blind benchmarks", or `routewise bench run`): pick
+   benchmarks, two or more models, and your current model as the baseline. Every model answers
+   every benchmark.
+2. **Rate blind.** Each benchmark shows its responses as Response A, B, C in an order shuffled
+   per benchmark. Model and vendor names are masked, models are told not to identify
+   themselves, and cost and latency are hidden. Give each response a 1 to 5 score and a
+   sentence on what you liked or disliked.
+3. **Reveal.** Only once every response is rated: your preferred model, mean scores, prompt
+   wins, each model against your baseline, and your comments grouped by model.
+4. **Repeat when a new model ships.** Benchmark prompts are versioned, and the history view
+   only compares ratings made on identical prompts, so results stay comparable over time.
+
+Built-in product management benchmarks (`data/benchmarks/pm-core.yaml`): turning a messy
+request into a PRD, prioritizing a backlog under a capacity limit, synthesizing user
+interviews, defining metrics and an A/B test, an executive update with bad news, a go/no-go
+call on mixed experiment results, and responding to a competitor's price cut. Each comes with
+rater guidance on what a great answer does (shown to you, never to the models).
+
+Create your own in the "Create a benchmark" tab. They are saved to `data/benchmarks/custom/`,
+which is gitignored so private work prompts are never pushed by accident.
+
+```bash
+uv run routewise bench list
+uv run routewise bench run --models claude-sonnet-5-5,gpt-6.1-sol,claude-haiku-5-5 \
+    --baseline claude-sonnet-5-5 --suite pm-core
+uv run routewise dashboard        # rate on the "Blind benchmarks" page, then reveal
+uv run routewise bench history
+```
+
+Blinding is not perfect: writing style and length can hint at a model. Rate on substance.
 
 ## Architecture
 
