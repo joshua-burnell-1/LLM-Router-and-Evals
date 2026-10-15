@@ -4,6 +4,18 @@ from routewise.evals.framework import EvalTask, ScorerSpec
 from routewise.models.client import ChatResult
 
 
+@pytest.fixture(autouse=True)
+def hermetic_env(monkeypatch):
+    """Never let tests read a developer's .env or real provider keys (no paid API calls)."""
+    import routewise.cli
+    import routewise.evals.runner
+
+    monkeypatch.setattr(routewise.cli, "load_dotenv", lambda *a, **k: False)
+    monkeypatch.setattr(routewise.evals.runner, "load_dotenv", lambda *a, **k: False)
+    for key in ("ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GEMINI_API_KEY", "ROUTEWISE_BACKEND"):
+        monkeypatch.delenv(key, raising=False)
+
+
 def make_task(task_id="t1", category="reasoning", prompt="2+2?", expected="4"):
     return EvalTask(
         id=task_id,

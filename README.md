@@ -177,10 +177,12 @@ uses its provider API key through LiteLLM when one is set (`ANTHROPIC_API_KEY`,
 `OPENAI_API_KEY`, `GEMINI_API_KEY`, see `.env.example`), and otherwise falls back to the
 `claude` CLI for Claude models. `ROUTEWISE_BACKEND` forces one backend for everything.
 
-Claude prices are verified against the list-price cost basis the CLI reports. The OpenAI and
-Gemini entries (model ids and prices) come from third-party trackers, are marked
-`price_verified: false`, and are disabled until you add keys and check them against the
-providers' pricing pages. `routewise models` shows each model's backend and price status.
+Claude prices are verified against the list-price cost basis the CLI reports. The OpenAI
+model ids (GPT-6 Astra, GPT-6.1 Sol, GPT-6 Luna) are verified against the OpenAI API; their
+prices come from third-party trackers and are marked `price_verified: false`, so check them
+against OpenAI's pricing page. Gemini entries are unverified and disabled. Enabled models you
+have no key for are skipped by `routewise eval`, so you only pay for providers you configured.
+`routewise models` shows each model's backend and price status.
 
 ## Scaling the evals
 

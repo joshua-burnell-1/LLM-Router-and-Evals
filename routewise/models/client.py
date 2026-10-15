@@ -145,9 +145,12 @@ class LiteLLMBackend:
 
             acompletion = litellm.acompletion
         start = time.perf_counter()
-        response = await acompletion(
-            model=spec.litellm_model, messages=messages, max_tokens=max_tokens, temperature=0
-        )
+        try:
+            response = await self._call(acompletion, spec, messages, max_tokens)
+        except Exception as exc:
+            if any(marker in str(exc).lower() for marker in _QUOTA_API_MARKERS):
+                raise QuotaExhaustedError(str(exc)[:500]) from exc
+            raise
         latency = time.perf_counter() - start
         usage = response.usage
         return RawCompletion(
@@ -157,7 +160,24 @@ class LiteLLMBackend:
             latency_s=latency,
         )
 
+    @staticmethod
+    async def _call(acompletion, spec: ModelSpec, messages: list[Message], max_tokens: int):
+        return await acompletion(
+            model=spec.litellm_model,
+            messages=messages,
+            max_tokens=max_tokens,
+            temperature=0,
+            drop_params=True,  # e.g. reasoning models only accept their default temperature
+        )
 
+
+# Provider messages meaning the account is out of credit or quota (not a short rate limit).
+_QUOTA_API_MARKERS = (
+    "no credits remaining",
+    "insufficient_quota",
+    "exceeded your current quota",
+    "credit balance is too low",
+)
 _TRANSIENT_CLI_MARKERS = ("rate limit", "429", "overloaded", "529", "timeout", "temporarily")
 _QUOTA_CLI_MARKERS = ("session limit", "usage limit", "weekly limit", "credit balance")
 

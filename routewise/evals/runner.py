@@ -24,7 +24,7 @@ from routewise.evals.framework import EvalTask, LLMJudge, score_output
 from routewise.evals.loader import all_tasks
 from routewise.evals.store import ResultRow, ResultStore, now_iso
 from routewise.models.client import ChatResult, QuotaExhaustedError, chat
-from routewise.models.registry import load_models
+from routewise.models.registry import MissingCredentialsError, load_models, resolve_backend
 
 DEFAULT_JUDGE_MODEL = "claude-haiku-5-5"
 
@@ -182,11 +182,24 @@ def main(argv: Iterable[str] | None = None) -> int:
     load_dotenv()
     args = build_parser().parse_args(list(argv) if argv is not None else None)
     registry = load_models(include_disabled=True)
-    enabled = [m for m, spec in registry.items() if spec.enabled]
-    model_ids = _csv(args.models) or enabled
-    unknown = [m for m in model_ids if m not in registry]
+    explicit = _csv(args.models)
+    unknown = [m for m in explicit or [] if m not in registry]
     if unknown:
         print(f"unknown models: {unknown}; known: {sorted(registry)}", file=sys.stderr)
+        return 2
+    model_ids = []
+    for model_id in explicit or [m for m, spec in registry.items() if spec.enabled]:
+        try:
+            resolve_backend(registry[model_id])
+        except MissingCredentialsError as exc:
+            if explicit:  # asked for by name: say why it cannot run
+                print(str(exc), file=sys.stderr)
+                return 2
+            print(f"skipping {model_id}: {exc}")
+            continue
+        model_ids.append(model_id)
+    if not model_ids:
+        print("no reachable models: add an API key to .env (see .env.example)", file=sys.stderr)
         return 2
     tasks = select_tasks(args)
     if not tasks:

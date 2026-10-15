@@ -233,3 +233,65 @@ def test_claude_cli_session_limit_is_quota_exhausted():
     msg = "You've hit your session limit · resets 7:50am (UTC)"
     with pytest.raises(QuotaExhaustedError):
         ClaudeCodeBackend.parse(_cli_json(is_error=True, result=msg), "x")
+
+
+async def test_litellm_backend_drops_params_a_model_does_not_support():
+    # Reasoning models (e.g. OpenAI GPT-6) reject temperature=0; LiteLLM must drop it.
+    seen = {}
+
+    async def fake_acompletion(**kwargs):
+        seen.update(kwargs)
+        return SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content="ok"))],
+            usage=SimpleNamespace(prompt_tokens=1, completion_tokens=1),
+        )
+
+    await LiteLLMBackend(acompletion=fake_acompletion).complete(
+        SPEC, [{"role": "user", "content": "q"}], max_tokens=5
+    )
+    assert seen["drop_params"] is True
+
+
+async def test_litellm_out_of_credits_is_quota_exhausted_not_retried():
+    from routewise.models.client import QuotaExhaustedError
+
+    RateLimitError = type("RateLimitError", (Exception,), {})
+    calls = {"n": 0}
+
+    async def broke(**kwargs):
+        calls["n"] += 1
+        raise RateLimitError("OpenAIException - You have no credits remaining. Add credits")
+
+    backend = LiteLLMBackend(acompletion=broke)
+    with pytest.raises(QuotaExhaustedError):
+        await chat(
+            "m",
+            [{"role": "user", "content": "q"}],
+            registry={"m": SPEC},
+            backends={"mock": backend},
+            retry_sleep=Sleeper(),
+        )
+    assert calls["n"] == 1
+
+
+async def test_litellm_plain_rate_limit_is_still_retried():
+    RateLimitError = type("RateLimitError", (Exception,), {})
+    calls = {"n": 0}
+
+    async def busy(**kwargs):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise RateLimitError("Rate limit reached for requests per min")
+        return SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content="ok"))],
+            usage=SimpleNamespace(prompt_tokens=1, completion_tokens=1),
+        )
+
+    result = await chat(
+        "m",
+        [{"role": "user", "content": "q"}],
+        registry={"m": SPEC},
+        backends={"mock": LiteLLMBackend(acompletion=busy)},
+        retry_sleep=Sleeper(),
+    )
+    assert result.text == "ok" and calls["n"] == 2

@@ -180,3 +180,34 @@ def test_cli_exits_3_when_stopped_by_budget(tmp_path, monkeypatch):
     monkeypatch.setenv("ROUTEWISE_MODELS_CONFIG", str(models))
     code = main(["--limit", "2", "--db", str(tmp_path / "r.db"), "--no-judge", "--max-cost", "0"])
     assert code == 3
+
+
+def test_cli_default_models_skip_unreachable_ones(tmp_path, monkeypatch, capsys):
+    models = tmp_path / "models.yaml"
+    models.write_text(
+        textwrap.dedent("""
+        models:
+          - {id: m1, provider: mock, input_price: 1, output_price: 2}
+          - {id: gpt-x, provider: openai, litellm_model: openai/gpt-x,
+             input_price: 1, output_price: 2}
+    """)
+    )
+    monkeypatch.setenv("ROUTEWISE_MODELS_CONFIG", str(models))
+    db = tmp_path / "r.db"
+    assert main(["--limit", "1", "--db", str(db), "--no-judge"]) == 0
+    assert {r.model_id for r in ResultStore(db).rows(include_errors=True)} == {"m1"}
+    assert "skipping gpt-x" in capsys.readouterr().out
+
+
+def test_cli_explicit_unreachable_model_is_an_error(tmp_path, monkeypatch, capsys):
+    models = tmp_path / "models.yaml"
+    models.write_text(
+        "models:\n  - {id: gpt-x, provider: openai, litellm_model: openai/gpt-x, "
+        "input_price: 1, output_price: 2}\n"
+    )
+    monkeypatch.setenv("ROUTEWISE_MODELS_CONFIG", str(models))
+    assert (
+        main(["--limit", "1", "--db", str(tmp_path / "r.db"), "--models", "gpt-x", "--no-judge"])
+        == 2
+    )
+    assert "OPENAI_API_KEY" in capsys.readouterr().err

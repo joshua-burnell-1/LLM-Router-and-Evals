@@ -2,10 +2,14 @@
 # threshold). `backend: auto` uses the provider API key through LiteLLM when it is set, and
 # otherwise falls back to the local `claude` CLI for Claude models (your Claude plan).
 #
+# Enabled models with no way to call them (no key, no CLI) are skipped by `routewise eval`.
+#
 # Claude prices verified 2026-10-14 against the list-price cost basis the claude CLI reports.
-# OpenAI and Gemini prices come from third-party trackers (Oct 2026) and are NOT verified
-# against the providers' own pricing pages: price_verified is false and they are disabled
-# until you add keys. Check https://openai.com/api/pricing and https://ai.google.dev/pricing.
+# OpenAI model ids verified 2026-10-15 against the /v1/models API. OpenAI and Gemini PRICES come
+# from third-party trackers (Oct 2026) and are NOT verified against the providers' own pricing
+# pages (price_verified: false). Check https://openai.com/api/pricing and
+# https://ai.google.dev/pricing before trusting their cost figures. Gemini ids are unverified,
+# so Gemini stays disabled.
 
 models:
   - id: claude-opus-5-5
@@ -34,20 +38,26 @@ models:
 
   - id: gpt-6-astra
     provider: openai
-    litellm_model: openai/gpt-6-astra  # UNVERIFIED model id and price
-    input_price: 10.00
+    litellm_model: openai/gpt-6-astra
+    input_price: 10.00  # UNVERIFIED price
     output_price: 50.00
     tier: flagship
-    enabled: false
+    price_verified: false
+
+  - id: gpt-6.1-sol
+    provider: openai
+    litellm_model: openai/gpt-6.1-sol
+    input_price: 2.00  # UNVERIFIED price
+    output_price: 10.00
+    tier: mid
     price_verified: false
 
   - id: gpt-6-luna
     provider: openai
-    litellm_model: openai/gpt-6-luna  # UNVERIFIED model id and price
-    input_price: 0.10
+    litellm_model: openai/gpt-6-luna
+    input_price: 0.10  # UNVERIFIED price
     output_price: 0.50
     tier: budget
-    enabled: false
     price_verified: false
 
   - id: gemini-3-1-pro
