@@ -142,19 +142,21 @@ def studio_tasks() -> list[EvalTask]:
 def all_tasks(
     *,
     include_builtin: bool = True,
-    include_studio: bool = True,
+    include_studio: bool = False,
     packs_dir: str | Path | None = TASKS_DIR,
     suites: Iterable[str] | None = None,
     categories: Iterable[str] | None = None,
     tags: Iterable[str] | None = None,
     ids: Iterable[str] | None = None,
 ) -> list[EvalTask]:
-    """Built-in tasks, every pack and your saved studio benchmarks, filtered. Order is stable
-    (built-ins first)."""
+    """Built-in tasks and every pack, filtered; plus your saved studio benchmarks when
+    `include_studio` is set or a studio suite is asked for by name. Order is stable (built-ins
+    first)."""
+    suites = list(suites) if suites else None
     tasks = list(BUILTIN_TASKS) if include_builtin else []
     if packs_dir is not None and Path(packs_dir).exists():
         tasks.extend(load_task_packs(packs_dir))
-    if include_studio:
+    if include_studio or any(s.startswith("studio-") for s in suites or ()):
         tasks.extend(studio_tasks())
     _check_unique(tasks)
     if suites:

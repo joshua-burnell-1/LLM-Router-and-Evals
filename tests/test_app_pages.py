@@ -56,7 +56,7 @@ def test_keys_page_shows_status_and_never_the_key(env):
     assert status == {"Model One": "Ready", "Open One": "Needs a key", "Gem One": "Off"}
 
     at.text_input(key="key-openai").input("sk-test-abcdefgh1234")
-    at.button(key="FormSubmitter:key-form-openai-Use for this session").click()
+    at.button(key="FormSubmitter:key-form-openai-Use until restart").click()
     at.run()
     assert not at.exception
     assert os.environ["OPENAI_API_KEY"] == "sk-test-abcdefgh1234"

@@ -38,9 +38,12 @@ DEFAULT_BASELINE = PROJECT_ROOT / "results" / "baseline.json"
 class Context:
     """Lazily loaded store, tasks, registry, leaderboard, and router."""
 
-    def __init__(self, db: str | None, suites: list[str] | None = None):
+    def __init__(
+        self, db: str | None, suites: list[str] | None = None, *, include_studio: bool = True
+    ):
         self.store = ResultStore(db or default_db_path())
-        self.tasks = all_tasks(suites=suites)
+        # studio benchmarks are local and git-ignored, so baselines and gates leave them out
+        self.tasks = all_tasks(suites=suites, include_studio=include_studio)
         self.registry = load_models(include_disabled=True)
         self.config = load_router_config()
         self.board = Leaderboard.from_store(self.store, current=self.tasks)
@@ -163,7 +166,7 @@ def cmd_replay(args: argparse.Namespace) -> int:
 def cmd_snapshot(args: argparse.Namespace) -> int:
     from routewise.router.gate import save_snapshot, snapshot
 
-    ctx = Context(args.db, _suites(args))
+    ctx = Context(args.db, _suites(args), include_studio=False)
     save_snapshot(snapshot(ctx.board), args.out)
     print(f"wrote baseline {args.out}")
     return 0
@@ -172,7 +175,7 @@ def cmd_snapshot(args: argparse.Namespace) -> int:
 def cmd_gate(args: argparse.Namespace) -> int:
     from routewise.router.gate import gate, load_snapshot
 
-    ctx = Context(args.db, _suites(args))
+    ctx = Context(args.db, _suites(args), include_studio=False)
     result = gate(
         ctx.board,
         load_snapshot(args.baseline),
@@ -205,7 +208,7 @@ def cmd_export(args: argparse.Namespace) -> int:
     import json
     from dataclasses import asdict
 
-    ctx = Context(args.db)
+    ctx = Context(args.db, include_studio=False)  # studio benchmarks are private
     rows = ctx.store.rows(current=ctx.tasks)  # current task versions only, no error rows
     with open(args.out, "w", encoding="utf-8") as fh:
         for row in rows:

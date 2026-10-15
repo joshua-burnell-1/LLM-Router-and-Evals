@@ -12,7 +12,6 @@ from __future__ import annotations
 import argparse
 import asyncio
 import functools
-import json
 import sys
 from collections.abc import Awaitable, Callable, Iterable, Sequence
 from dataclasses import dataclass
@@ -20,7 +19,7 @@ from dataclasses import dataclass
 from dotenv import load_dotenv
 
 from routewise.config import TASKS_DIR, default_db_path
-from routewise.evals.framework import EvalTask, LLMJudge, score_output
+from routewise.evals.framework import EvalTask, LLMJudge, score_detail_json, score_output
 from routewise.evals.loader import all_tasks
 from routewise.evals.store import ResultRow, ResultStore, now_iso
 from routewise.models.client import ChatResult, QuotaExhaustedError, chat
@@ -107,12 +106,7 @@ async def run_eval(
                     summary.total_cost_usd += result.cost_usd
                 scored = await score_output(task, result.text, judge)
                 row.quality = scored.value
-                row.score_detail = json.dumps(
-                    [
-                        {"scorer": c.scorer, "value": c.value, "reason": c.reason}
-                        for c in scored.components
-                    ]
-                )
+                row.score_detail = score_detail_json(scored.components)
                 row.judge_cost_usd = scored.judge_cost_usd
                 async with lock:
                     summary.total_cost_usd += scored.judge_cost_usd

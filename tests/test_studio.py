@@ -209,9 +209,9 @@ def test_saved_studio_benchmarks_join_the_eval_set(monkeypatch, tmp_path):
 
     monkeypatch.setenv("ROUTEWISE_STUDIO_DIR", str(tmp_path))
     save(bench(), tmp_path)
-    ids = [t.id for t in all_tasks()]
+    ids = [t.id for t in all_tasks(include_studio=True)]
     assert "studio-invoice-totals-1" in ids and "studio-invoice-totals-2" in ids
-    assert "studio-invoice-totals-1" not in [t.id for t in all_tasks(include_studio=False)]
+    assert "studio-invoice-totals-1" not in [t.id for t in all_tasks()]
     assert [t.id for t in all_tasks(suites=["studio-invoice-totals"])] == [
         "studio-invoice-totals-1",
         "studio-invoice-totals-2",

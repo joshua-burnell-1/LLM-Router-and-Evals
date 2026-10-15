@@ -21,9 +21,10 @@ render(
     hero(
         "Models & keys",
         "Connect the models you want to test",
-        "Bring your own API keys. Use a key for this session only, or save it to a local .env "
-        "file that never leaves this machine and is never committed. Claude models also run on "
-        "your Claude plan through the claude CLI, with no key at all.",
+        "Bring your own API keys. Use a key until the app restarts without writing it "
+        "anywhere, or save it to a local .env file that never leaves this machine and is never "
+        "committed. Keys apply to this running app, so anyone using it shares them. Claude models "
+        "also run on your Claude plan through the claude CLI, with no key at all.",
     )
 )
 
@@ -95,7 +96,7 @@ for provider, env_name in KEY_PROVIDERS.items():
                 label_visibility="collapsed",
             )
             b1, b2, _ = st.columns([1, 1, 2])
-            session_only = b1.form_submit_button("Use for this session", use_container_width=True)
+            session_only = b1.form_submit_button("Use until restart", use_container_width=True)
             persist = b2.form_submit_button(
                 "Save to .env", type="primary", use_container_width=True
             )
@@ -106,7 +107,7 @@ for provider, env_name in KEY_PROVIDERS.items():
                     ss["keys-flash"] = f"Saved the {label} key to {env_file().name}."
                 else:
                     use_key_for_session(provider, key)
-                    ss["keys-flash"] = f"Using the {label} key until the app restarts."
+                    ss["keys-flash"] = f"Using the {label} key until the app restarts (not saved)."
                 st.rerun()
             except ValueError as exc:
                 st.error(f"Could not use that key: {exc}.")

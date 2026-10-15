@@ -76,3 +76,32 @@ def test_save_benchmark(env):
     assert (Path(os.environ["ROUTEWISE_STUDIO_DIR"]) / "my-invoices.yaml").exists()
     # it now appears under "Start from"
     assert "Saved · My invoices" in at.selectbox(key="st-start").options
+
+
+def test_saving_over_a_different_benchmark_is_refused(env):
+    at = AppTest.from_file(PAGE, default_timeout=60).run()
+    at.text_input(key="st-name").input("My invoices").run()
+    at.button(key="st-save").click().run()
+    at.text_input(key="st-name").input("My Invoices!").run()
+    at.button(key="st-save").click().run()
+    assert not at.exception
+    assert any("already saved" in e.value for e in at.error)
+
+
+def test_judge_shown_the_expected_answer_gets_an_expected_column(env):
+    at = AppTest.from_file(PAGE, default_timeout=60).run()
+    _load(at, "template:1")  # Support replies: judged, no expected column
+    assert "expected" not in at.session_state["st-cases-cols"]
+    at.checkbox(key="chk-llm_judge-show_expected").check().run()
+    assert not at.exception
+    assert "expected" in at.session_state["st-cases-cols"]
+    assert "Before you can run" in _md(at)  # the new column is empty
+
+
+def test_unreadable_saved_files_are_reported_not_fatal(env):
+    d = Path(os.environ["ROUTEWISE_STUDIO_DIR"])
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "broken.yaml").write_text("name: [unclosed")
+    at = AppTest.from_file(PAGE, default_timeout=60).run()
+    assert not at.exception
+    assert any("broken.yaml" in w.value for w in at.warning)

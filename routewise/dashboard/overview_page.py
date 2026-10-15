@@ -59,7 +59,7 @@ try:
 except Exception:
     sessions = []
 try:
-    n_tasks = len(all_tasks())
+    n_tasks = len(all_tasks(include_studio=True))
 except Exception:
     n_tasks = 0
 n_saved = len(list_saved())

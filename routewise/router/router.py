@@ -324,7 +324,7 @@ def default_router(refresh: bool = False) -> Router:
     if _DEFAULT_ROUTER is None or refresh:
         from routewise.evals.loader import all_tasks
 
-        tasks = all_tasks()
+        tasks = all_tasks(include_studio=True)
         _DEFAULT_ROUTER = Router(
             Leaderboard.from_store(ResultStore(default_db_path()), current=tasks),
             examples=ExampleIndex.from_tasks(tasks),

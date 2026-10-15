@@ -59,7 +59,7 @@ uv run routewise dashboard         # http://localhost:8501
 The dashboard opens on the Overview. Then:
 
 - **Models & keys**: see which models are ready. Claude models work through the `claude` CLI on
-  your Claude plan with no key; for other providers paste your own API key (session only, or
+  your Claude plan with no key; for other providers paste your own API key (until the app restarts, or
   saved to the git-ignored `.env`).
 - **Benchmark studio**: load the *Word problems* template, pick two models, press **Run**.
 - **Model router**: type a prompt and see which model it would use and why.
@@ -293,7 +293,7 @@ uses its provider API key through LiteLLM when one is set (`ANTHROPIC_API_KEY`,
 `OPENAI_API_KEY`, `GEMINI_API_KEY`, see `.env.example`), and otherwise falls back to the
 `claude` CLI for Claude models. `ROUTEWISE_BACKEND` forces one backend for everything.
 The dashboard's **Models & keys** page shows each model's status and lets users paste their own
-key for the session or save it to `.env` (owner-only permissions, git-ignored, only ever shown
+key until the app restarts or save it to `.env` (owner-only permissions, git-ignored, only ever shown
 as its last four characters). Keys are never stored anywhere else.
 
 Claude prices are verified against the list-price cost basis the CLI reports. The OpenAI

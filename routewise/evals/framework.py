@@ -26,6 +26,7 @@ class Score:
     value: float
     reason: str
     scorer: str = ""
+    fingerprint: str = ""  # judge verdicts: which rubric/reference produced them
 
     def __post_init__(self) -> None:
         if not 0.0 <= self.value <= 1.0:
@@ -443,6 +444,52 @@ class LLMJudge:
         return Score((raw - 1) / 4, f"judge {raw}/5: {reason}", scorer="llm_judge"), result.cost_usd
 
 
+def judge_fingerprint(params: dict[str, Any]) -> str:
+    """Identifies a judge check's rubric and reference, so stale verdicts can be detected."""
+    blob = json.dumps(
+        {"rubric": params.get("rubric"), "reference": params.get("reference")}, sort_keys=True
+    )
+    return hashlib.sha256(blob.encode()).hexdigest()[:12]
+
+
+def _prior_fits(prior: Score, spec: ScorerSpec) -> bool:
+    # verdicts stored before fingerprints existed are trusted as before
+    return not prior.fingerprint or prior.fingerprint == judge_fingerprint(spec.params)
+
+
+def _combine(weighted: list[tuple[ScorerSpec, Score]], judge_cost: float) -> TaskScore:
+    if not weighted:
+        return TaskScore(0.0, [], judge_cost)
+    components = [s for _, s in weighted]
+    if any(spec.required and s.value == 0.0 for spec, s in weighted):
+        return TaskScore(0.0, components, judge_cost)
+    total_weight = sum(spec.weight for spec, _ in weighted)
+    value = sum(spec.weight * s.value for spec, s in weighted) / total_weight
+    return TaskScore(value, components, judge_cost)
+
+
+def score_offline(
+    task: EvalTask, output: str, prior_judge_scores: list[Score] | None = None
+) -> tuple[TaskScore, int]:
+    """Score without calling a judge: programmatic scorers rerun, judge checks reuse matching
+    stored verdicts. Returns the score and how many judge checks still need a verdict."""
+    weighted: list[tuple[ScorerSpec, Score]] = []
+    priors = list(prior_judge_scores or [])
+    pending = 0
+    for spec in task.scoring:
+        if spec.type == "llm_judge":
+            prior = priors.pop(0) if priors else None
+            if prior is not None and _prior_fits(prior, spec):
+                weighted.append((spec, prior))
+            else:
+                pending += 1
+            continue
+        if spec.type not in SCORERS:
+            raise ValueError(f"task {task.id}: unknown scorer {spec.type!r}")
+        weighted.append((spec, SCORERS[spec.type](output, **spec.params)))
+    return _combine(weighted, 0.0), pending
+
+
 async def score_output(
     task: EvalTask,
     output: str,
@@ -452,33 +499,44 @@ async def score_output(
     """Run every scorer on the task.
 
     Judge components use `judge` when given; otherwise they reuse `prior_judge_scores` (in
-    order, for rescoring stored outputs without new judge calls) or are skipped.
+    order, for rescoring stored outputs without new judge calls) when they were produced by
+    the same rubric and reference, or are skipped.
     """
+    if judge is None:
+        return score_offline(task, output, prior_judge_scores)[0]
     weighted: list[tuple[ScorerSpec, Score]] = []
     judge_cost = 0.0
-    priors = list(prior_judge_scores or [])
     for spec in task.scoring:
         if spec.type == "llm_judge":
-            if judge is None:
-                if priors:
-                    weighted.append((spec, priors.pop(0)))
-                continue
             params = dict(spec.params)
             score, cost = await judge.score(
                 task, output, params.pop("rubric"), params.get("reference")
             )
+            score.fingerprint = judge_fingerprint(spec.params)
             judge_cost += cost
         else:
             if spec.type not in SCORERS:
                 raise ValueError(f"task {task.id}: unknown scorer {spec.type!r}")
             score = SCORERS[spec.type](output, **spec.params)
         weighted.append((spec, score))
+    return _combine(weighted, judge_cost)
 
-    if not weighted:
-        return TaskScore(0.0, [], judge_cost)
-    components = [s for _, s in weighted]
-    if any(spec.required and s.value == 0.0 for spec, s in weighted):
-        return TaskScore(0.0, components, judge_cost)
-    total_weight = sum(spec.weight for spec, _ in weighted)
-    value = sum(spec.weight * s.value for spec, s in weighted) / total_weight
-    return TaskScore(value, components, judge_cost)
+
+def score_detail_json(components: list[Score]) -> str:
+    """How score components are stored on a result row."""
+    out = []
+    for c in components:
+        item: dict[str, Any] = {"scorer": c.scorer, "value": c.value, "reason": c.reason}
+        if c.fingerprint:
+            item["fp"] = c.fingerprint
+        out.append(item)
+    return json.dumps(out)
+
+
+def stored_judge_scores(score_detail: str | None) -> list[Score]:
+    """Judge verdicts from a stored score_detail, in order."""
+    return [
+        Score(d["value"], d["reason"], "llm_judge", d.get("fp", ""))
+        for d in json.loads(score_detail or "[]")
+        if d["scorer"] == "llm_judge"
+    ]

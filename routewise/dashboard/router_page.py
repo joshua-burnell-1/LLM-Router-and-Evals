@@ -68,7 +68,7 @@ EXAMPLES = {
 @st.cache_resource(show_spinner=False)
 def load_state(db_path: str, mtime: float, models_config: str | None):
     store = ResultStore(db_path)
-    tasks = all_tasks()
+    tasks = all_tasks(include_studio=True)
     registry = load_models(include_disabled=True)
     rows = store.rows(current=tasks)
     return store, tasks, registry, rows, ExampleIndex.from_tasks(tasks)

@@ -2,15 +2,19 @@
 
 from __future__ import annotations
 
-import json
 from collections import defaultdict
 from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 
-from routewise.evals.framework import LLMJudge
+from routewise.evals.framework import (
+    EvalTask,
+    LLMJudge,
+    score_offline,
+    stored_judge_scores,
+)
 from routewise.evals.rescore import rescore
 from routewise.evals.runner import RunSummary, run_eval
-from routewise.evals.store import ResultStore
+from routewise.evals.store import ResultRow, ResultStore
 from routewise.models.client import ChatResult, estimate_tokens
 from routewise.models.registry import ModelSpec, cost_usd
 from routewise.studio.catalog import CATALOG, build_scorer_spec
@@ -28,6 +32,14 @@ class CostEstimate:
     judge_usd: float
     assumed_output_tokens: int
     cached: int = 0  # answers already stored; rerunning them is free
+    judge_calls: int = 0
+
+
+def _pending_judge(row: ResultRow, task: EvalTask) -> int:
+    """Judge checks on a stored answer that have no verdict for the current rubric yet."""
+    if row.output is None:
+        return 0
+    return score_offline(task, row.output, stored_judge_scores(row.score_detail))[1]
 
 
 def estimate_cost(
@@ -45,20 +57,30 @@ def estimate_cost(
     per_model: dict[str, float] = {}
     judge_usd = 0.0
     judge_spec = registry.get(judge_model) if judge_model else None
-    calls = cached = 0
+    stored: dict[tuple[str, str], ResultRow] = {}
+    if store is not None and tasks:
+        for row in store.rows(models=list(models), current=tasks):
+            if row.sample_idx == 0:
+                stored[(row.task_id, row.model_id)] = row
+    n_judge_checks = sum(c.key == "llm_judge" for c in bench.checks)
+    calls = cached = judge_calls = 0
     for model in models:
         spec = registry[model]
         total = 0.0
         for task in tasks:
-            if store is not None and store.has(task.id, task.version, model):
-                cached += 1
-                continue
-            calls += 1
             prompt_tokens = estimate_tokens((task.system_prompt or "") + task.prompt)
-            total += cost_usd(spec, prompt_tokens, output_tokens)
-            if bench.uses_judge() and judge_spec is not None:
+            row = stored.get((task.id, model))
+            if row is not None:
+                cached += 1
+                to_judge = _pending_judge(row, task)
+            else:
+                calls += 1
+                total += cost_usd(spec, prompt_tokens, output_tokens)
+                to_judge = n_judge_checks
+            if to_judge and judge_spec is not None:
+                judge_calls += to_judge
                 judge_in = prompt_tokens + output_tokens + 250
-                judge_usd += cost_usd(judge_spec, judge_in, JUDGE_OUTPUT_TOKENS)
+                judge_usd += to_judge * cost_usd(judge_spec, judge_in, JUDGE_OUTPUT_TOKENS)
         per_model[model] = total
     return CostEstimate(
         calls=calls,
@@ -67,6 +89,7 @@ def estimate_cost(
         judge_usd=judge_usd,
         assumed_output_tokens=output_tokens,
         cached=cached,
+        judge_calls=judge_calls,
     )
 
 
@@ -97,6 +120,15 @@ async def run_studio(
         force=force,
         run_args={"studio": bench.slug, "models": list(models)},
     )
+    if judge is not None:
+        # judge checks added or edited after answers were stored still need a verdict
+        chosen = set(models)
+        await rescore(
+            store,
+            tasks,
+            judge=judge,
+            only=lambda row, task: row.model_id in chosen and _pending_judge(row, task) > 0,
+        )
     await rescore(store, tasks, judge=None)
     return summary
 
@@ -141,6 +173,7 @@ class StudioResults:
     best_value: str | None
     pass_threshold: float
     total_cases: int
+    pending_judge: int = 0  # answers whose AI-judge verdict is missing or out of date
 
     def tied_best(self, tolerance: float = 0.005) -> list[str]:
         """Models whose mean score is level with the top score (best first)."""
@@ -227,24 +260,35 @@ def summarize(
     """Per-model and per-case results for the benchmark's current prompt version."""
     tasks = bench.to_tasks()
     index = {t.id: i for i, t in enumerate(tasks)}
+    by_id = {t.id: t for t in tasks}
     all_rows = store.rows(models=list(models), include_errors=True, current=tasks)
     labels = _check_labels(bench)
 
     cases: list[CaseResult] = []
     per_model: dict[str, list] = defaultdict(list)
     errors: dict[str, int] = defaultdict(int)
+    pending = 0
     for row in all_rows:
+        if row.sample_idx != 0:  # repeats from `routewise eval --repeats` are not new cases
+            continue
         if row.error:
             errors[row.model_id] += 1
             cases.append(
                 CaseResult(index[row.task_id], row.model_id, None, row.output, error=row.error)
             )
             continue
-        detail = json.loads(row.score_detail or "[]")
+        # score with the checks as they are now, so edits show without a rerun
+        scored, missing = score_offline(
+            by_id[row.task_id], row.output or "", stored_judge_scores(row.score_detail)
+        )
+        pending += missing
+        detail = [
+            {"scorer": c.scorer, "value": c.value, "reason": c.reason} for c in scored.components
+        ]
         case = CaseResult(
             index[row.task_id],
             row.model_id,
-            row.quality,
+            scored.value,
             row.output,
             _label_components(detail, labels),
             row.cost_usd,
@@ -284,4 +328,6 @@ def summarize(
         good_enough = [r for r in results if r.mean_score >= bar]
         best_value = min(good_enough, key=lambda r: (r.mean_cost_usd, -r.mean_score)).model_id
     cases.sort(key=lambda c: (c.case_index, c.model_id))
-    return StudioResults(results, cases, best_quality, best_value, pass_threshold, len(tasks))
+    return StudioResults(
+        results, cases, best_quality, best_value, pass_threshold, len(tasks), pending
+    )

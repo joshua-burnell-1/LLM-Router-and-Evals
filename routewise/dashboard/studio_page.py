@@ -65,7 +65,7 @@ def _load(bench: StudioBenchmark) -> None:
     ss["st-prompt"] = bench.prompt
     ss["st-system"] = bench.system_prompt or ""
     ss["st-category"] = bench.category
-    ss["st-checks"] = [c.key for c in bench.checks]
+    ss["st-checks"] = [c.key for c in bench.checks if c.key in CATALOG]
     for info in CHECKS:
         base = defaults(info.key)
         chosen = next((c for c in bench.checks if c.key == info.key), None)
@@ -88,7 +88,8 @@ if "studio-load" in ss:
 if "st-prompt" not in ss:
     _load(TEMPLATES[0])
 
-saved = {b.slug: b for b in list_saved()}
+load_errors: list[str] = []
+saved = {b.slug: b for b in list_saved(errors=load_errors)}
 
 render(
     hero(
@@ -113,6 +114,8 @@ def _option_label(opt: str) -> str:
     return f"Saved · {saved[ref].name}"
 
 
+if load_errors:
+    st.warning("Some saved benchmarks could not be read and are hidden: " + "; ".join(load_errors))
 c1, c2 = st.columns([5, 1], vertical_alignment="bottom")
 start = c1.selectbox("Start from", options, format_func=_option_label, key="st-start")
 if c2.button("Load", key="st-load", use_container_width=True):
@@ -162,8 +165,10 @@ if variables:
 # --- 2. test cases ----------------------------------------------------------------------------
 
 selected_checks = ss.get("st-checks", [])
-needs_expected = any(CATALOG[k].uses_expected for k in selected_checks if k in CATALOG)
-columns = list(variables) + (["expected"] if needs_expected else [])
+needs_expected = any(CATALOG[k].uses_expected for k in selected_checks if k in CATALOG) or (
+    "llm_judge" in selected_checks and bool(ss.get("chk-llm_judge-show_expected"))
+)
+columns = list(variables) + (["expected"] if needs_expected and "expected" not in variables else [])
 
 render(
     step(
@@ -183,15 +188,29 @@ if ss.get("st-cases-cols") != columns:
     ss["st-cases-ver"] = ss.get("st-cases-ver", 0) + 1
 
 upload = st.file_uploader("Upload test cases (CSV with a header row)", type=["csv"], key="st-csv")
-if upload is not None and ss.get("st-csv-seen") != (upload.name, upload.size):
-    frame = pd.read_csv(io.BytesIO(upload.getvalue()), dtype=str).fillna("")
-    missing = [c for c in columns if c not in frame.columns]
-    if missing:
-        st.error("The CSV is missing columns: " + ", ".join(missing))
-    else:
-        ss["st-cases-base"] = frame[columns].to_dict("records")
-        ss["st-cases-ver"] = ss.get("st-cases-ver", 0) + 1
+if upload is None:
+    ss.pop("st-csv-seen", None)  # so re-uploading the same file after a fix is picked up
+elif ss.get("st-csv-seen") != (upload.name, upload.size):
     ss["st-csv-seen"] = (upload.name, upload.size)
+    frame = None
+    for encoding in ("utf-8-sig", "cp1252"):  # Excel on Windows saves cp1252
+        try:
+            frame = pd.read_csv(io.BytesIO(upload.getvalue()), dtype=str, encoding=encoding)
+            break
+        except UnicodeDecodeError:
+            continue
+        except (pd.errors.ParserError, pd.errors.EmptyDataError, ValueError) as exc:
+            st.error(f"Could not read that CSV: {exc}")
+            break
+    if frame is not None:
+        frame = frame.fillna("")
+        frame.columns = [str(c).strip() for c in frame.columns]
+        missing = [c for c in columns if c not in frame.columns]
+        if missing:
+            st.error("The CSV is missing columns: " + ", ".join(missing))
+        else:
+            ss["st-cases-base"] = frame[columns].to_dict("records")
+            ss["st-cases-ver"] = ss.get("st-cases-ver", 0) + 1
 
 if columns:
     edited = st.data_editor(
@@ -356,7 +375,11 @@ if estimate:
                 (
                     "Judge cost",
                     money(estimate.judge_usd) if bench.uses_judge() else "none",
-                    name(judge_model) if bench.uses_judge() and judge_model else "no LLM judge",
+                    (
+                        f"{estimate.judge_calls} verdicts from {name(judge_model)}"
+                        if bench.uses_judge() and judge_model
+                        else "no LLM judge"
+                    ),
                 ),
             ]
         )
@@ -372,15 +395,24 @@ run_clicked = c3.button(
     "Run benchmark", key="st-run", type="primary", use_container_width=True, disabled=bool(problems)
 )
 if save_clicked:
-    path = save(bench)
-    ss["st-flash"] = (bench.name, str(path))
-    st.rerun()  # so the "Start from" list picks up the new benchmark
+    try:
+        path = save(bench)
+    except ValueError as exc:
+        st.error(f"Not saved: {exc}.")
+    else:
+        ss["st-flash"] = (bench.name, str(path))
+        st.rerun()  # so the "Start from" list picks up the new benchmark
 if "st-flash" in ss:
     flash_name, flash_path = ss.pop("st-flash")
     st.success(f"Saved “{flash_name}”. Rerun it any time, for example when a new model ships.")
     st.caption(f"Stored at {flash_path} (gitignored).")
 if run_clicked:
-    save(bench)
+    try:
+        save(bench)
+    except ValueError as exc:
+        st.error(f"Not run: {exc}.")
+        run_clicked = False
+if run_clicked:
     chat_fn = functools.partial(chat, registry=registry)
     judge = LLMJudge(judge_model, chat_fn=chat_fn) if bench.uses_judge() and judge_model else None
     with st.status(f"Running {estimate.calls} new answers...", expanded=False) as status:
@@ -428,6 +460,15 @@ render(
 )
 head, line = verdict(results, name)
 tied = results.tied_best()
+if results.pending_judge:
+    render(
+        callout(
+            f"{results.pending_judge} answers have no AI-judge verdict for the current rubric "
+            "yet, so scores below leave that check out. Press Run benchmark to judge them "
+            "(only the judge is called; stored answers are reused).",
+            "accent",
+        )
+    )
 render(
     verdict_card(
         head,

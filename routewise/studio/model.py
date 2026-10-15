@@ -6,6 +6,7 @@ leaderboard and router all work on studio benchmarks unchanged.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -28,8 +29,32 @@ def studio_dir() -> Path:
 
 
 def slugify(text: str) -> str:
-    slug = re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
-    return slug[:50] or "benchmark"
+    slug = re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")[:50].strip("-")
+    if slug:
+        return slug
+    if not text.strip():
+        return "benchmark"
+    # names with no Latin letters or digits still get distinct, stable ids
+    return "benchmark-" + hashlib.sha256(text.strip().encode()).hexdigest()[:8]
+
+
+# The only check parameters that hold per-test-case placeholders, all put there by the
+# catalogue. Everything else (typed words, regexes, rubrics) is used literally.
+_TEMPLATED_PARAMS = {
+    "expected_answer": ("expected", "strings"),
+    "json_fields": ("expected",),
+    "llm_judge": ("reference",),
+    "keeps_numbers": ("source",),
+}
+
+
+def _needs_expected(check: CheckConfig) -> bool:
+    info = CATALOG.get(check.key)
+    if info is None:
+        return False
+    return info.uses_expected or (
+        check.key == "llm_judge" and bool(check.values.get("show_expected"))
+    )
 
 
 @dataclass
@@ -91,11 +116,7 @@ class StudioBenchmark:
                 + ", ".join(f"{{{{{v}}}}}" for v in self.variables())
                 + "."
             )
-        needs_expected = [
-            CATALOG[c.key].label
-            for c in self.checks
-            if c.key in CATALOG and CATALOG[c.key].uses_expected
-        ]
+        needs_expected = [CATALOG[c.key].label for c in self.checks if _needs_expected(c)]
         needs_json = any(CATALOG[c.key].expected_json for c in self.checks if c.key in CATALOG)
         for i, case in enumerate(cases, start=1):
             for var in self.variables():
@@ -107,10 +128,16 @@ class StudioBenchmark:
                 )
             elif needs_json:
                 try:
-                    if not isinstance(json.loads(case.get("expected", "")), dict):
+                    expected = json.loads(case.get("expected", ""))
+                    if not isinstance(expected, dict):
                         raise ValueError
                 except (ValueError, TypeError):
                     errors.append(f"Test case {i}: the expected answer must be a JSON object.")
+                else:
+                    if not expected:
+                        errors.append(
+                            f"Test case {i}: the expected JSON needs at least one field to compare."
+                        )
         for check in self.checks:
             info = CATALOG.get(check.key)
             if info is None:
@@ -122,6 +149,11 @@ class StudioBenchmark:
                 errors.append(f"“{info.label}”: {exc}.")
             if check.key == "keeps_numbers" and check.values.get("column") not in self.variables():
                 errors.append(f"“{info.label}”: pick which prompt variable holds the source text.")
+        if not errors:
+            try:
+                self.to_tasks()
+            except Exception as exc:  # anything that would break a run is a problem to show
+                errors.append(f"The benchmark could not be prepared: {exc}.")
         return errors
 
     def to_tasks(self) -> list[EvalTask]:
@@ -133,7 +165,10 @@ class StudioBenchmark:
             scoring = []
             for check in self.checks:
                 spec = build_scorer_spec(check.key, check.values, check.weight, check.required)
-                params = render(spec.params, values)
+                params = dict(spec.params)
+                for key in _TEMPLATED_PARAMS.get(check.key, ()):
+                    if key in params:
+                        params[key] = render(params[key], values)
                 if CATALOG[check.key].expected_json:
                     params["expected"] = json.loads(params["expected"])
                 scoring.append(type(spec)(spec.type, params, spec.weight, spec.required))
@@ -158,36 +193,86 @@ class StudioBenchmark:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> StudioBenchmark:
-        data = dict(data)
-        data["checks"] = [CheckConfig(**c) for c in data.get("checks", [])]
-        data["cases"] = [
-            {str(k): ("" if v is None else str(v)) for k, v in c.items()}
-            for c in data.get("cases", [])
+        """Build from saved data, tolerating unknown keys and loosely typed values."""
+        if not isinstance(data, dict):
+            raise ValueError("a saved benchmark must be a mapping")
+
+        def text(value: Any) -> str:
+            return "" if value is None else str(value)
+
+        checks = []
+        for c in data.get("checks") or []:
+            if not isinstance(c, dict) or "key" not in c:
+                continue
+            try:
+                weight = float(c.get("weight", 1.0))
+            except (TypeError, ValueError):
+                weight = 1.0
+            values = c.get("values") if isinstance(c.get("values"), dict) else {}
+            checks.append(
+                CheckConfig(
+                    str(c["key"]), values, min(max(weight, 0.5), 5.0), bool(c.get("required"))
+                )
+            )
+        cases = [
+            {str(k): text(v) for k, v in c.items()}
+            for c in data.get("cases") or []
+            if isinstance(c, dict)
         ]
-        return cls(**data)
+        system = data.get("system_prompt")
+        return cls(
+            name=text(data.get("name")),
+            category=text(data.get("category")),
+            prompt=text(data.get("prompt")),
+            cases=cases,
+            checks=checks,
+            system_prompt=text(system) if system else None,
+            description=text(data.get("description")),
+            judge_model=text(data.get("judge_model")),
+        )
 
 
 def save(bench: StudioBenchmark, directory: str | Path | None = None) -> Path:
     directory = Path(directory) if directory is not None else studio_dir()
     directory.mkdir(parents=True, exist_ok=True)
     path = directory / f"{bench.slug}.yaml"
+    if path.exists():
+        try:
+            existing = StudioBenchmark.from_dict(yaml.safe_load(path.read_text()) or {}).name
+        except Exception:
+            existing = ""
+        if existing and existing.strip() != bench.name.strip():
+            raise ValueError(
+                f"a benchmark called “{existing}” is already saved under this name; "
+                "pick a different name, or load that one to edit it"
+            )
     path.write_text(yaml.safe_dump(bench.to_dict(), sort_keys=False, allow_unicode=True, width=100))
     return path
 
 
-def load_saved(directory: str | Path | None = None) -> dict[str, StudioBenchmark]:
+def load_saved(
+    directory: str | Path | None = None, *, errors: list[str] | None = None
+) -> dict[str, StudioBenchmark]:
+    """Saved benchmarks by slug. Unreadable files are skipped (and described in `errors`)."""
     directory = Path(directory) if directory is not None else studio_dir()
     out: dict[str, StudioBenchmark] = {}
     if not directory.exists():
         return out
     for path in sorted(directory.glob("*.yaml")):
-        bench = StudioBenchmark.from_dict(yaml.safe_load(path.read_text()) or {})
+        try:
+            bench = StudioBenchmark.from_dict(yaml.safe_load(path.read_text()) or {})
+        except Exception as exc:
+            if errors is not None:
+                errors.append(f"{path.name}: {exc}")
+            continue
         out[bench.slug] = bench
     return out
 
 
-def list_saved(directory: str | Path | None = None) -> list[StudioBenchmark]:
-    return sorted(load_saved(directory).values(), key=lambda b: b.name.lower())
+def list_saved(
+    directory: str | Path | None = None, *, errors: list[str] | None = None
+) -> list[StudioBenchmark]:
+    return sorted(load_saved(directory, errors=errors).values(), key=lambda b: b.name.lower())
 
 
 def delete_saved(slug: str, directory: str | Path | None = None) -> None:
