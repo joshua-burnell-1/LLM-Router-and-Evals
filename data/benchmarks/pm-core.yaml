@@ -1,0 +1,168 @@
+# Product management benchmarks for blind, human-rated model comparison.
+# Prompts are fixed on purpose: rerun them whenever a new model ships and the results stay
+# comparable over time. Editing a prompt starts a new version (old ratings stop counting).
+# `guidance` is shown to you while rating; models never see it.
+suite: pm-core
+benchmarks:
+  - id: pm-prd
+    title: Turn a messy request into a one-page PRD
+    tags: [writing, scoping]
+    guidance: |
+      A great answer states the problem in the customer's terms, names who it is for, sets
+      measurable success criteria, scopes an MVP and says explicitly what is out of scope,
+      flags open questions (tax rules, file formats, permissions), and does not invent facts
+      beyond the thread. It reads as one page, not five.
+    prompt: |
+      You are the PM for Ledgerly, an invoicing app for small businesses (about 18,000 paying
+      accounts, mostly 1 to 20 employees). Turn this Slack thread into a one-page PRD with:
+      problem, target users, goals and success metrics, MVP scope, out of scope, risks, and
+      open questions.
+
+      #feature-requests
+      Dana (Sales): 3 of my last 10 lost deals said "we need to export invoices in bulk for our
+      accountant". Competitor Billwise has it. Can we just add a button?
+      Raj (Support): ~40 tickets/month asking for this. People currently download PDFs one by
+      one. Some want CSV for their accounting software, some want a ZIP of PDFs.
+      Mei (Eng lead): CSV is easy. ZIP of PDFs for big accounts (5k+ invoices/yr) means async
+      jobs + email when ready. Also: do we include voided invoices? Different tax columns per
+      country.
+      Dana: Accountants also asked for "date range" and "by client" filters.
+      Tom (Finance): please don't promise QuickBooks/Xero integration, that is a 2027 thing.
+      Raj: one customer said their accountant doesn't have a Ledgerly login, so they want to
+      email the export directly to the accountant.
+
+  - id: pm-prioritization
+    title: Prioritize a backlog under a hard capacity limit
+    tags: [prioritization, tradeoffs]
+    guidance: |
+      A great answer computes or reasons about RICE (or an equivalent) correctly from the
+      numbers given, respects the 30 engineer-week budget, notices the compliance deadline and
+      the dependency between items, says clearly what gets cut and why, and calls out where the
+      confidence numbers are weak. Penalize arithmetic errors and plans that exceed capacity.
+    prompt: |
+      You lead one squad with 30 engineer-weeks of capacity next quarter. Pick what to build
+      and in what order, show your scoring, and say what you are cutting and why.
+
+      | # | Item | Reach (users/qtr) | Impact (0.25-3) | Confidence | Effort (eng-wks) | Notes |
+      |---|---|---|---|---|---|---|
+      | 1 | SSO (SAML) | 900 | 2 | 80% | 10 | Blocks 4 enterprise deals worth $380k ARR |
+      | 2 | Dark mode | 12,000 | 0.25 | 90% | 4 | Most upvoted on the feedback board |
+      | 3 | Faster dashboard load (p95 6s to 2s) | 15,000 | 1 | 70% | 8 | |
+      | 4 | Audit log | 900 | 1 | 80% | 6 | Required for SOC 2; auditor deadline in 10 weeks |
+      | 5 | Bulk edit | 5,000 | 1 | 50% | 7 | Requested by support, unclear usage |
+      | 6 | Mobile push notifications | 7,000 | 0.5 | 40% | 9 | |
+      | 7 | AI summary of activity | 10,000 | 2 | 30% | 12 | CEO enthusiasm, no user research yet |
+      | 8 | SCIM user provisioning | 600 | 2 | 80% | 5 | Only useful after SSO ships |
+
+  - id: pm-interview-synthesis
+    title: Synthesize user interviews into insights
+    tags: [research, synthesis]
+    guidance: |
+      A great answer groups evidence into a few real themes, separates what users said from
+      what they need, quotes or cites which participants support each theme, notices the
+      contradiction between P2 and P5, avoids jumping straight to a feature, and proposes what
+      to validate next with a concrete method. Penalize invented quotes or participants.
+    prompt: |
+      Synthesize these interview notes for a team building a meal-planning app. Give 3 to 4
+      themes with supporting evidence (cite participants), the single most important
+      opportunity, what you would NOT build yet, and what to validate next and how.
+
+      P1 (parent of 3, full-time nurse): "Sunday planning takes an hour and I still end up
+      ordering pizza Wednesday." Plans on paper, loses the list.
+      P2 (single, software engineer): Loves variety, hates leftovers. Tried 3 apps, quit all
+      within 2 weeks: "too much setup, it asked me 40 questions".
+      P3 (couple, one vegetarian): Biggest pain is agreeing on meals. Uses a shared note that
+      "nobody updates".
+      P4 (retired, cooks daily): Doesn't need planning, wants to use up what's in the fridge,
+      throws away ~20% of produce.
+      P5 (parent of 2, shift worker): Wants the app to "just decide for me" but also said "I'd
+      never let an app pick dinner for my kids, they're picky".
+      P6 (student, tight budget): Plans around grocery deals; would pay for nothing.
+
+  - id: pm-metrics-experiment
+    title: Define success metrics and an A/B test
+    tags: [metrics, experimentation]
+    guidance: |
+      A great answer picks one primary metric tied to the goal (activation within 7 days, not
+      vanity clicks), adds guardrails (support tickets, time to first value, retention), gives a
+      sensible sample-size or duration estimate from the numbers provided (or explains how to
+      compute it), names the randomization unit, and defines what result would ship or kill it.
+      Penalize p-hacking (many primaries) and ignoring the novelty effect.
+    prompt: |
+      Your B2B project-management tool is testing a new onboarding checklist for newly created
+      workspaces. Today: 4,000 new workspaces per week; 22% "activate" (create 3+ tasks and
+      invite 1+ teammate within 7 days); 30-day retention of activated workspaces is 61%.
+      The team hopes the checklist lifts activation to 25%.
+
+      Define the primary success metric, secondary metrics, and guardrails; design the A/B test
+      (unit of randomization, duration, rough sample size, and how you will analyze it); and
+      state in advance what result means ship, iterate, or kill.
+
+  - id: pm-exec-update
+    title: Write an executive update with bad news
+    tags: [communication, stakeholders]
+    guidance: |
+      A great answer leads with the headline (the slip and its impact), owns the cause without
+      blame, gives 2 to 3 real options with costs and tradeoffs, makes a clear recommendation,
+      and ends with a specific ask and date. Under about 250 words, no jargon, no padding.
+      Penalize burying the news or hiding the revenue impact.
+    prompt: |
+      Write a short update to the exec team (CEO, CFO, VP Sales). Facts:
+      - "Payments v2" was promised for June 30. It will slip.
+      - Cause: the card-processor certification failed its first audit (2 security findings);
+        re-audit is booked for July 22. Fixes are done and verified internally.
+      - Sales has 6 deals ($540k ARR) whose contracts reference Payments v2; 2 of them
+        ($210k) have a July 15 go-live clause.
+      - Options the team identified: (a) wait for full launch ~Aug 5 after re-audit;
+        (b) launch to the 2 urgent customers on the old processor with a manual
+        reconciliation workaround (2 engineers for 3 weeks, ops burden ~10 hrs/week);
+        (c) offer the 6 customers a 2-month discount instead of a workaround.
+      You are the PM; recommend one option.
+
+  - id: pm-launch-decision
+    title: Make a go/no-go call on mixed experiment results
+    tags: [decision-making, data]
+    guidance: |
+      A great answer reads the table correctly, notices that conversion is up but refunds and
+      support contacts are also up and that the mobile segment drives the harm, weighs revenue
+      net of refunds, considers statistical confidence, and makes a clear decision (for example
+      ship to desktop only and fix mobile) with the follow-up it would track. Penalize
+      recommendations that cite only the headline conversion lift.
+    prompt: |
+      Your checkout redesign ran as a 50/50 A/B test for 3 weeks (~120k sessions per arm).
+      Results (treatment vs control):
+
+      | Metric | Control | Treatment | Change | 95% CI on change |
+      |---|---|---|---|---|
+      | Checkout conversion | 3.10% | 3.38% | +9.0% | +4.1% to +13.9% |
+      | Avg order value | $64.20 | $62.90 | -2.0% | -4.6% to +0.6% |
+      | Refund rate (30 day) | 4.0% | 5.6% | +40% | +22% to +58% |
+      | Support contacts per 1k orders | 18 | 27 | +50% | +31% to +69% |
+      | Conversion, desktop only | 3.60% | 3.95% | +9.7% | +3.8% to +15.6% |
+      | Conversion, mobile only | 2.70% | 2.92% | +8.1% | +1.0% to +15.2% |
+      | Refund rate, mobile only | 4.3% | 7.9% | +84% | +55% to +113% |
+
+      Should we ship? Give a recommendation, your reasoning, and what you would do next.
+
+  - id: pm-competitive-positioning
+    title: Respond to a competitor move
+    tags: [strategy, positioning]
+    guidance: |
+      A great answer does not panic-match on price, uses the win/loss and segment data to see
+      where the threat is real (SMB) versus overstated (mid-market), proposes a positioning
+      statement, a concrete response plan with a few moves sequenced over time, and the
+      metrics that would tell you it is working. Penalize generic strategy talk with no link to
+      the numbers.
+    prompt: |
+      You are PM for Shiftly, scheduling software for restaurants. Competitor RotaGo just cut
+      its price to $2 per employee per month (Shiftly charges $4) and launched a free tier for
+      up to 10 employees. Data you have:
+      - Your customers: 70% SMB (under 25 employees, 45% of revenue), 30% mid-market
+        (25 to 200 employees, 55% of revenue).
+      - Last quarter win rate vs RotaGo: SMB 38% (down from 52%), mid-market 71% (flat).
+      - Top reasons you win: payroll integration, labor-cost forecasting, multi-location view.
+      - Top reasons you lose: price, "simpler to set up".
+      - Gross margin 78%; SMB churn 3.1%/month, mid-market 0.9%/month.
+
+      Write a positioning statement and a response plan for the next two quarters, including
+      what you would and would not do on pricing, and how you will know it is working.
